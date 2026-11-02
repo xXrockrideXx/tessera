@@ -41,7 +41,7 @@ img{max-width:100%}
   --accent:#3dbcac; --accent-ink:#06211e; --accent-soft:#183a37; --danger:#e0705f; color-scheme:dark }
 html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-#app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"top" "stage" "panel" "tabs"}
+#app{height:100%;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"top" "stage" "panel" "tabs"}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
@@ -63,18 +63,41 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 #cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
 .zoom{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:12px;font-family:var(--f-mono);font-size:12px;padding:6px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--muted)}
 .eptag{position:absolute;top:12px;left:50%;transform:translateX(-50%);box-shadow:0 4px 14px rgba(0,0,0,.18);z-index:5}
+.fbar{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:2px;padding:4px;border-radius:14px;background:var(--panel);border:1px solid var(--line);box-shadow:0 6px 18px rgba(10,20,30,.14);z-index:4}
+.fbar button{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;font-size:14px;font-weight:500}
+.fbar button:hover{background:var(--sunk)}
+.fbar button:active{background:var(--accent-soft);color:var(--accent)}
+.fbar svg{width:20px;height:20px}
 .hint{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:12px;font-size:12px;color:var(--muted);max-width:60%}
 .artshadow{filter:drop-shadow(0 2px 10px rgba(20,30,40,.14))}
 
 /* panel */
-.panel{grid-area:panel;background:var(--panel);border-top:1px solid var(--line);height:min(272px,36vh);overflow:auto;padding-block:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.pwrap{grid-area:panel;display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--panel);border-top:1px solid var(--line)}
+.handle{display:flex;align-items:center;justify-content:center;gap:8px;position:relative;padding:7px 16px 5px;color:var(--muted);font-family:var(--f-display);font-size:13px;letter-spacing:.04em;touch-action:none}
+.handle .grip{position:absolute;top:4px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--line)}
+.handle .hlab{margin-top:6px}
+.handle .chev{width:16px;height:16px;margin-top:6px;transition:transform .2s}
+#app.collapsed .handle .chev{transform:rotate(180deg)}
+.strip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+.strip::-webkit-scrollbar{display:none}
+.strip button{flex:0 0 52px;height:52px;border-radius:10px;background:var(--sunk);display:grid;place-items:center;color:var(--muted)}
+.strip button:active{transform:scale(.92)}
+.strip svg{width:70%;height:70%}
+.strip .txt{font-family:"DM Serif Display",Georgia,serif;font-size:24px;color:var(--ink)}
+.panel{background:var(--panel);height:min(272px,36vh);overflow:auto;padding-block:6px 14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+@media (max-width:899px){
+  #app.collapsed .panel{height:auto;padding-block:2px 10px}
+  #app.collapsed:not(.t-shapes) .panel{display:none}
+}
 .tabs{grid-area:tabs;display:grid;grid-template-columns:repeat(5,1fr);background:var(--sunk);border-top:1px solid var(--line);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 .tabs button{padding:12px 4px 13px;font-family:var(--f-display);font-weight:500;font-size:15px;color:var(--muted);position:relative}
 .tabs button[aria-selected="true"]{color:var(--ink);background:var(--panel)}
 .tabs button[aria-selected="true"]::before{content:"";position:absolute;left:30%;right:30%;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
 @media (min-width:900px){
   #app{grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"top top" "stage tabs" "stage panel"}
-  .panel{height:auto;border-top:0;border-left:1px solid var(--line)}
+  .pwrap{border-top:0;border-left:1px solid var(--line)}
+  .handle{display:none}
+  .panel{height:auto;flex:1;padding-block:14px}
   .tabs{border-top:0;border-left:1px solid var(--line);border-bottom:1px solid var(--line)}
 }
 
@@ -173,10 +196,17 @@ select.tin{padding:8px 10px}
       <g id="world"></g>
     </svg>
     <div class="hint" id="hint">With a shape selected, drag anywhere to move it · tap empty space to deselect · two fingers to pan and zoom</div>
+    <div class="fbar" id="fbar" hidden>
+      <button data-qa="flip" data-arg="h" title="Mirror left to right (Shift+H)" aria-label="Mirror left to right"></button>
+      <button data-qa="flip" data-arg="v" title="Flip top to bottom (Shift+V)" aria-label="Flip top to bottom"></button>
+    </div>
     <button class="zoom" id="zoom" title="Fit to screen">100%</button>
     <button class="eptag pbtn" id="epDone" hidden>Done editing points</button>
   </div>
-  <section class="panel" id="panel"></section>
+  <div class="pwrap" id="pwrap">
+    <button class="handle" id="handle" aria-label="Collapse panel" aria-expanded="true"><span class="grip"></span><span class="hlab" id="hlab">Shapes</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+    <section class="panel" id="panel"></section>
+  </div>
   <nav class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="shapes">Shapes</button>
     <button role="tab" data-tab="style">Style</button>
@@ -307,6 +337,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s1',type:'ellipse',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#e0d1bb',stroke:'none',sw:0,op:1},
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
+let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
 const keyShape=()=>{const ss=selShapes();if(ss.length<2)return null;return ss.find(s=>s.id===keyId)||ss[0]};
@@ -435,6 +466,7 @@ function renderTop(){
   $('bUndo').disabled=!undo.length;$('bRedo').disabled=!redo.length;
   $('bDup').disabled=$('bDel').disabled=!sel.length;
   $('bSnap').setAttribute('aria-pressed',snapOn);$('bMulti').setAttribute('aria-pressed',multi);
+  const fb=$('fbar'),show=sel.length>0&&!ep&&selShapes().some(s=>!s.locked);fb.hidden=!show;if(show)$('hint')?.remove();
 }
 function refresh(){syncSize();renderCanvas();renderPanel();renderTop();save()}
 
@@ -443,7 +475,9 @@ function fitScale(){const r=cv.getBoundingClientRect();return Math.max(.05,Math.
 function fit(){const r=cv.getBoundingClientRect();view.s=fitScale();view.tx=(r.width-W*view.s)/2;view.ty=(r.height-H*view.s)/2;view.auto=true;renderCanvas()}
 function toWorld(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left-view.tx)/view.s,y:(cy-r.top-view.ty)/view.s}}
 function zoomAt(cx,cy,ns){const r=cv.getBoundingClientRect(),p=toWorld(cx,cy);const f=fitScale();ns=Math.max(f*.2,Math.min(f*12,ns));view.s=ns;view.tx=cx-r.left-p.x*ns;view.ty=cy-r.top-p.y*ns;view.auto=false;renderCanvas()}
-new ResizeObserver(()=>{if(view.auto)fit();else renderCanvas()}).observe($('stage'));
+{let pw=0,ph=0;new ResizeObserver(()=>{const r=$('stage').getBoundingClientRect();
+  // keep the view centred when the panel opens or closes
+  if(view.auto)fit();else{if(pw){view.tx+=(r.width-pw)/2;view.ty+=(r.height-ph)/2}renderCanvas()}pw=r.width;ph=r.height}).observe($('stage'));}
 
 // ---------- adding ----------
 function visibleCenter(){const r=cv.getBoundingClientRect(),p=toWorld(r.left+r.width/2,r.top+r.height/2);const m=Math.min(W,H)*.08;return{x:Math.max(m,Math.min(W-m,p.x)),y:Math.max(m,Math.min(H-m,p.y))}}
@@ -657,7 +691,7 @@ function onDoubleTap(id){
   const s=byId(id);if(!s)return;
   if(s.g&&sel.length>1&&oneGroup()){inG=s.g;sel=[id];refresh();toast('Inside the group — double-tap again to edit points');return}
   if(s.type!=='text'){enterEdit(id);return}
-  sel=[id];tab='style';styleT='fill';refresh();setTimeout(()=>{const t=$('txt');if(t){t.focus();t.select()}},30)}
+  sel=[id];openTab('style');styleT='fill';refresh();setTimeout(()=>{const t=$('txt');if(t){t.focus();t.select()}},30)}
 
 // ---------- groups ----------
 function expand(ids){const gs=new Set(ids.map(byId).filter(s=>s&&s.g).map(s=>s.g));if(!gs.size)return ids;
@@ -703,7 +737,7 @@ function normalisePts(s,cs){
 function enterEdit(id){
   const s=byId(id);if(!s||s.type==='text'||s.locked)return;
   pushUndo();if(s.type!=='path'){s.name=shapeN(s);s.pd=shapeD(s);s.type='path'}
-  ep={id,cs:parsePD(s.pd),si:null};sel=[id];tab='arrange';refresh();
+  ep={id,cs:parsePD(s.pd),si:null};sel=[id];openTab('arrange');refresh();
   toast('Editing points — drag them, or tap a small dot to add one');
 }
 function exitEdit(){if(!ep)return;ep=null;refresh()}
@@ -837,7 +871,9 @@ function act(name,arg){
     case'keyfirst':keyId=sel[0];alignTo='key';break;
     case'keylast':keyId=sel[sel.length-1];alignTo='key';break;
     case'swap':{if(ss.length!==2)return;pushUndo();const[a,b]=ss;[a.x,b.x]=[b.x,a.x];[a.y,b.y]=[b.y,a.y];toast('Swapped positions');break}
-    case'flip':{if(!ss.length)return;pushUndo();ss.forEach(s=>{if(arg==='h')s.fx*=-1;else s.fy*=-1});break}
+    case'flip':{const fl=ss.filter(s=>!s.locked);if(!fl.length)return;pushUndo();const b=union(fl),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;
+      fl.forEach(s=>{if(arg==='h'){s.fx*=-1;s.x=2*cx-s.x}else{s.fy*=-1;s.y=2*cy-s.y}s.r=s.r?-s.r:0});
+      toast(arg==='h'?'Mirrored left to right':'Flipped top to bottom');break}
     case'order':{if(!ss.length)return;pushUndo();let arr=doc.shapes;const ids=new Set(sel);
       if(arg==='front')arr=[...arr.filter(s=>!ids.has(s.id)),...arr.filter(s=>ids.has(s.id))];
       else if(arg==='back')arr=[...arr.filter(s=>ids.has(s.id)),...arr.filter(s=>!ids.has(s.id))];
@@ -893,6 +929,9 @@ function applyColor(c){
 // ---------- panels ----------
 const thumb=(type,size=32)=>{const a=DEF[type]?.a||1;const w=a>=1?size:size*a,h=a>=1?size/a:size;return `<svg viewBox="-20 -20 40 40"><path d="${scaleD(DEF[type].d,w,h)}" fill-rule="evenodd" fill="currentColor"/></svg>`};
 function pShapes(){
+  if(collapsed&&!wide()){let h='<div class="strip"><button data-add="text" title="Text" aria-label="Add text"><span class="txt">Aa</span></button>';
+    for(const g in LIB)for(const k in LIB[g])h+=`<button data-add="${k}" title="${LIB[g][k].n}" aria-label="Add ${LIB[g][k].n}">${thumb(k)}</button>`;
+    return h+'</div>'}
   let h='';
   for(const g in LIB){h+=`<div class="sec"><h3>${g}</h3><div class="lib">`;
     if(g==='Basic')h+=`<button data-add="text" title="Text" aria-label="Add text"><span class="txt">Aa</span></button>`;
@@ -982,7 +1021,7 @@ function pArrange(){
       <button data-act="match" data-arg="w">Same width</button><button data-act="match" data-arg="h">Same height</button><button data-act="match" data-arg="both">Same size</button>
       ${n===2?B('swap','','fh','Swap places'):''}</div></div>`;
   }
-  h+=`<div class="sec"><h3>Flip &amp; order</h3><div class="btns">${B('flip','h','fh','Flip across')}${B('flip','v','fv','Flip down')}</div>
+  h+=`<div class="sec"><h3>Flip &amp; order</h3><div class="btns">${B('flip','h','fh','Mirror')}${B('flip','v','fv','Flip')}</div>
     <div class="btns">${B('order','front','front','To front')}${B('order','fwd','fwd','Forward')}${B('order','bwd','bwd','Backward')}${B('order','back','back','To back')}</div></div>`;
   return h;
 }
@@ -1021,12 +1060,35 @@ function pGrid(){
   return h;
 }
 function addGuide(axis,pos){pos=Math.round(pos*10)/10;if(doc.guides.some(g=>g.axis===axis&&Math.abs(g.pos-pos)<.5))return 0;doc.guides.push({id:gid(),axis,pos});return 1}
+const wide=()=>matchMedia('(min-width:900px)').matches;
+const TABN={shapes:'Shapes',style:'Style',arrange:'Arrange',layers:'Layers',grid:'Grid'};
+function openTab(t){tab=t;setCollapsed(false,true)}
+function setCollapsed(v,quiet){
+  collapsed=v;try{localStorage.setItem('tessera.collapsed',v?'1':'0')}catch(e){}
+  if(!quiet)renderPanel();
+}
+function renderChrome(){
+  const app=$('app');app.classList.toggle('collapsed',collapsed);app.classList.toggle('t-shapes',tab==='shapes');
+  const h=$('handle');h.setAttribute('aria-expanded',!collapsed);h.setAttribute('aria-label',collapsed?'Expand panel':'Collapse panel');
+  $('hlab').textContent=collapsed?(tab==='shapes'?'More shapes':'Show '+TABN[tab]):TABN[tab];
+}
 function renderPanel(){
+  renderChrome();
   if(panel.contains(document.activeElement)&&document.activeElement.matches('input:not([type=color]),select'))return;
   document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
   panel.innerHTML={shapes:pShapes,style:pStyle,arrange:pArrange,layers:pLayers,grid:pGrid}[tab]();
 }
-$('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;tab=b.dataset.tab;if(tab==='style'&&sel.length&&styleT==='bg')styleT='fill';renderPanel()});
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;const t=b.dataset.tab;
+  if(t===tab&&!wide()){setCollapsed(!collapsed);return}
+  tab=t;if(tab==='style'&&sel.length&&styleT==='bg')styleT='fill';
+  if(collapsed&&tab!=='shapes')collapsed=false,setCollapsed(false,true);
+  renderPanel()});
+// handle: tap to toggle, or swipe down to collapse / up to expand
+{let y0=null,moved=false;const h=$('handle');
+ h.addEventListener('pointerdown',e=>{y0=e.clientY;moved=false;h.setPointerCapture(e.pointerId)});
+ h.addEventListener('pointermove',e=>{if(y0==null)return;const d=e.clientY-y0;if(Math.abs(d)>24&&!moved){moved=true;if(d>0&&!collapsed)setCollapsed(true);else if(d<0&&collapsed)setCollapsed(false)}});
+ h.addEventListener('pointerup',()=>{if(y0!=null&&!moved)setCollapsed(!collapsed);y0=null});
+ h.addEventListener('pointercancel',()=>{y0=null});}
 panel.addEventListener('click',e=>{
   const t=e.target.closest('[data-add],[data-col],[data-st],[data-act],[data-pick]');if(!t||t.disabled)return;
   if(t.dataset.add)return addShape(t.dataset.add);
@@ -1072,6 +1134,8 @@ $('bMulti').onclick=()=>{multi=!multi;toast(multi?'Multi-select on: tap shapes t
 $('bDup').onclick=()=>act('dup');$('bDel').onclick=()=>act('del');$('bUndo').onclick=doUndo;$('bRedo').onclick=doRedo;
 $('zoom').onclick=fit;
 $('epDone').onclick=exitEdit;
+{const fb=$('fbar').children;fb[0].innerHTML=IC.fh+'<span>Mirror</span>';fb[1].innerHTML=IC.fv+'<span>Flip</span>';
+ $('fbar').addEventListener('click',e=>{const b=e.target.closest('[data-qa]');if(b)act(b.dataset.qa,b.dataset.arg)});}
 let menuEl=null;
 $('bMenu').onclick=e=>{e.stopPropagation();if(menuEl){menuEl.remove();menuEl=null;return}
   menuEl=document.createElement('div');menuEl.className='menu';
@@ -1081,7 +1145,7 @@ $('bMenu').onclick=e=>{e.stopPropagation();if(menuEl){menuEl.remove();menuEl=nul
     if(m==='fit')fit();
     if(m==='new'){pushUndo();doc={bg:'#ffffff',W,H,shapes:[]};sel=[];tab='shapes';refresh();toast('New canvas — undo brings the old one back')}
     if(m==='sample'){pushUndo();doc=sample();syncSize();sel=[];fit();refresh()}
-    if(m==='canvas'){sel=[];tab='arrange';refresh()}
+    if(m==='canvas'){sel=[];openTab('arrange');refresh()}
     if(m==='export')openExport();
   };
 };
@@ -1121,6 +1185,7 @@ addEventListener('keydown',e=>{
   if(mod&&k==='a'){e.preventDefault();act('selall');return}
   if(k==='delete'||k==='backspace'){e.preventDefault();act(ep&&ep.si?'epdel':'del');return}
   if(k==='escape'){if(ep)return exitEdit();sel=[];inG=null;refresh();return}
+  if(e.shiftKey&&!mod&&(k==='h'||k==='v')){e.preventDefault();act('flip',k);return}
   if(mod&&k==='g'){e.preventDefault();act(e.shiftKey?'ungroup':'group');return}
   if(k==='0'&&mod){e.preventDefault();fit();return}
   const ar={arrowleft:[-1,0],arrowright:[1,0],arrowup:[0,-1],arrowdown:[0,1]}[k];
