@@ -132,6 +132,7 @@ select.tin{padding:8px 10px}
 .btns button{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:9px;background:var(--sunk);font-size:13px}
 .btns button svg{width:18px;height:18px}
 .btns button:disabled{opacity:.35;cursor:default}
+.btns .pbtn{background:var(--accent);color:var(--accent-ink);font-weight:600}
 .btns button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
 .note{font-size:13px;color:var(--muted);line-height:1.45;margin:0}
 .presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
@@ -140,6 +141,8 @@ select.tin{padding:8px 10px}
 .pre .pvw{width:30px;height:30px;display:grid;place-items:center;flex:0 0 auto}.pre .pv{background:var(--panel);border:1.5px solid var(--muted);border-radius:3px}
 .pre b{display:block;font-weight:600;font-size:13px}.pre small{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
 .layers{display:grid;gap:4px}
+.bgrow{display:flex;gap:12px;align-items:center}
+.bgthumb{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:0 0 auto}
 .gr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:2px 4px}
 .gr .ga{font-size:13px;color:var(--muted);font-family:var(--f-mono)}
 .gr .ib{width:34px;height:34px}.gr .ib svg{width:18px;height:18px}
@@ -199,9 +202,11 @@ select.tin{padding:8px 10px}
     <div class="fbar" id="fbar" hidden>
       <button data-qa="flip" data-arg="h" title="Mirror left to right (Shift+H)" aria-label="Mirror left to right"></button>
       <button data-qa="flip" data-arg="v" title="Flip top to bottom (Shift+V)" aria-label="Flip top to bottom"></button>
+      <button data-qa="sbstart" title="Shape builder (Shift+M)" aria-label="Shape builder"></button>
     </div>
     <button class="zoom" id="zoom" title="Fit to screen">100%</button>
     <button class="eptag pbtn" id="epDone" hidden>Done editing points</button>
+    <input type="file" id="bgfile" accept="image/*" hidden>
   </div>
   <div class="pwrap" id="pwrap">
     <button class="handle" id="handle" aria-label="Collapse panel" aria-expanded="true"><span class="grip"></span><span class="hlab" id="hlab">Shapes</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
@@ -273,6 +278,7 @@ const IC={
  bpts:I('<path d="M5 19 9 6l10 4-6 9z" stroke-opacity=".5"/><rect x="3" y="17" width="4" height="4" fill="currentColor"/><rect x="7" y="4" width="4" height="4" fill="currentColor"/><rect x="17" y="8" width="4" height="4" fill="currentColor"/><rect x="11" y="17" width="4" height="4" fill="currentColor"/>'),
  bgroup:I('<rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 2"/><rect x="6" y="6" width="6" height="6" rx="1" fill="currentColor" fill-opacity=".3"/><circle cx="15" cy="15" r="3" fill="currentColor" fill-opacity=".3"/>'),
  bungroup:I('<rect x="3" y="3" width="8" height="8" rx="1" fill="currentColor" fill-opacity=".3"/><circle cx="17" cy="17" r="4" fill="currentColor" fill-opacity=".3"/><path d="M14 6h6M17 3v6" stroke-opacity="0"/>'),
+ bbuild:I('<circle cx="9" cy="10" r="6"/><circle cx="15" cy="10" r="6"/><path d="M12 5.2a6 6 0 0 1 0 9.6a6 6 0 0 1 0-9.6z" fill="currentColor" fill-opacity=".45"/><path d="M4 21h16" stroke-dasharray="2 2"/>'),
  bsplit:I('<path d="M4 4h7v7H4zM13 13h7v7h-7z" fill="currentColor" fill-opacity=".3"/><path d="M14 4l6 6M20 4l-6 6" stroke-opacity=".5"/>'),
  ratio:I('<rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M8 10h3M13 14h3"/>'),
  file:I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>'), fit:I('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
@@ -332,6 +338,8 @@ let SN={obj:true,grid:false,guide:true,rot:true}, gmarVal=null, guideDrag=null;
 try{Object.assign(SN,JSON.parse(localStorage.getItem('tessera.snap')||'{}'))}catch(e){}
 const saveSN=()=>{try{localStorage.setItem('tessera.snap',JSON.stringify(SN))}catch(e){}};
 const gid=()=>'g'+Math.random().toString(36).slice(2,8);
+let sb=null; // shape builder: {ids:Set, at, regions:[{mp,fill,touched}], mode:'merge'|'erase', keep:true, hist:[]}
+let bgData={};try{const b=JSON.parse(localStorage.getItem('tessera.bgimg')||'null');if(b&&b.id)bgData[b.id]=b.data}catch(e){}
 let ep=null, inG=null; // ep: point-editing state {id, cs:contours, si:[c,i]|null}; inG: group currently entered
 const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s1',type:'ellipse',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#e0d1bb',stroke:'none',sw:0,op:1},
@@ -355,8 +363,8 @@ const save=()=>{try{localStorage.setItem('tessera.doc',JSON.stringify(doc))}catc
 const snap=()=>JSON.stringify(doc);
 function pushUndo(prev){undo.push(prev||snap());if(undo.length>150)undo.shift();redo=[]}
 function restore(str){const w=W,h=H;doc=JSON.parse(str);syncSize();sel=sel.filter(byId);if(ep){const s=byId(ep.id);if(s&&s.type==='path'){ep.cs=parsePD(s.pd);ep.si=null}else ep=null}if(w!==W||h!==H)fit();refresh()}
-function doUndo(){if(!undo.length)return;redo.push(snap());restore(undo.pop())}
-function doRedo(){if(!redo.length)return;undo.push(snap());restore(redo.pop())}
+function doUndo(){if(sb){if(sb.hist.length){sb.regions=sb.hist.pop();renderAfterSel()}return}if(!undo.length)return;redo.push(snap());restore(undo.pop())}
+function doRedo(){if(sb)return;if(!redo.length)return;undo.push(snap());restore(redo.pop())}
 
 // ---------- geometry ----------
 const rad=d=>d*Math.PI/180;
@@ -394,7 +402,8 @@ function overlay(){
   for(const key of['w','h']){const m=sizeMatch[key];if(!m)continue;const me=selShapes()[0];if(me)o+=dimMark(me,key,k);
     m.ids.forEach(id=>{const s=byId(id);if(!s)return;o+=dimMark(s,Math.abs(s.w-m.v)<.05?'w':'h',k)})}
   const ss=selShapes();
-  if(ep){o+=epOverlay(k,A)}
+  if(sb){}
+  else if(ep){o+=epOverlay(k,A)}
   else if(ss.length===1){
     const s=ss[0],w=s.w,h=s.h,small=Math.min(w,h)*view.s<44;
     o+=`<g transform="translate(${s.x} ${s.y}) rotate(${s.r})">`;
@@ -454,19 +463,30 @@ function guidesSVG(){
   }
   return o;
 }
+function bgImgSVG(exp){
+  const b=doc.bgImg,d=b&&bgData[b.id];if(!d||!b.show||(exp&&!b.exp))return'';
+  const par={fill:'xMidYMid slice',fit:'xMidYMid meet',stretch:'none'}[b.fit||'fill'];
+  return `<image href="${d}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="${par}" opacity="${b.op??1}" clip-path="url(#artclip)" pointer-events="none"/>`;
+}
+function shapesSVG(){
+  if(!sb)return doc.shapes.map(s=>shapeSVG(s)).join('');
+  let o='',done=false;
+  for(const s of doc.shapes){if(sb.ids.has(s.id)){if(!done){o+=sbRegionsSVG();done=true}continue}o+=shapeSVG(s)}
+  return o;
+}
 function renderCanvas(){
   epCheck();
   world.setAttribute('transform',`matrix(${view.s} 0 0 ${view.s} ${view.tx} ${view.ty})`);
-  world.innerHTML=`<rect class="artshadow" x="0" y="0" width="${W}" height="${H}" fill="${doc.bg}"/>`+
-    gridSVG()+`<g clip-path="none">${doc.shapes.map(s=>shapeSVG(s)).join('')}</g>`+guidesSVG()+overlay();
+  world.innerHTML=`<defs><clipPath id="artclip"><rect width="${W}" height="${H}"/></clipPath></defs><rect class="artshadow" x="0" y="0" width="${W}" height="${H}" fill="${doc.bg}"/>`+bgImgSVG(false)+
+    gridSVG()+`<g clip-path="none">${shapesSVG()}</g>`+guidesSVG()+overlay();
   $('zoom').textContent=Math.round(view.s*100/ fitScale()*100)/100+'%';
   $('zoom').textContent=Math.round(view.s/fitScale()*100)+'%';
 }
 function renderTop(){
-  $('bUndo').disabled=!undo.length;$('bRedo').disabled=!redo.length;
-  $('bDup').disabled=$('bDel').disabled=!sel.length;
+  $('bUndo').disabled=sb?!sb.hist.length:!undo.length;$('bRedo').disabled=!!sb||!redo.length;
+  $('bDup').disabled=$('bDel').disabled=!sel.length||!!sb;
   $('bSnap').setAttribute('aria-pressed',snapOn);$('bMulti').setAttribute('aria-pressed',multi);
-  const fb=$('fbar'),show=sel.length>0&&!ep&&selShapes().some(s=>!s.locked);fb.hidden=!show;if(show)$('hint')?.remove();
+  const fb=$('fbar'),show=sel.length>0&&!ep&&!sb&&selShapes().some(s=>!s.locked);fb.hidden=!show;fb.children[2].hidden=selShapes().filter(s=>s.type!=='text').length<2;if(show)$('hint')?.remove();
 }
 function refresh(){syncSize();renderCanvas();renderPanel();renderTop();save()}
 
@@ -512,12 +532,13 @@ const ptrs=new Map(); let drag=null, pinch=null, lastTap={id:null,t:0};
 cv.addEventListener('pointerdown',e=>{
   cv.setPointerCapture(e.pointerId);
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(ptrs.size===2){ if(drag&&drag.prev&&drag.changed){pushUndo(drag.prev)} drag=null;guideDrag=null;guides={x:null,y:null};marq=null;sizeMatch={w:null,h:null};startPinch();renderCanvas();return }
+  if(ptrs.size===2){ if(drag&&drag.prev&&drag.changed){pushUndo(drag.prev)} if(sb)sb.hover=new Set(); drag=null;guideDrag=null;guides={x:null,y:null};marq=null;sizeMatch={w:null,h:null};startPinch();renderCanvas();return }
   if(ptrs.size>2)return;
   const P=toWorld(e.clientX,e.clientY);
   if(e.button===1||e.button===2||spaceDown){drag={mode:'pan',sx:e.clientX,sy:e.clientY,tx:view.tx,ty:view.ty};return}
   const hEl=e.target.closest('[data-h]'), sEl=e.target.closest('[data-id]'), gEl=e.target.closest('[data-g]');
   const prev=snap();
+  if(sb){const i=sbHitAt(P.x,P.y);sb.hover=new Set(i>=0?[i]:[]);sb.first=i>=0?i:null;drag={mode:'sb',last:P};renderCanvas();return}
   if(ep){
     const s=byId(ep.id),nEl=e.target.closest('[data-n],[data-hd],[data-mid]');
     if(nEl){
@@ -576,6 +597,12 @@ cv.addEventListener('pointermove',e=>{
     }
     drag.starts.forEach(o=>{o.s.x=o.x+dx;o.s.y=o.y+dy});
     renderCanvas();return;
+  }
+  if(drag.mode==='sb'){
+    // sample along the finger's path so quick swipes don't skip thin pieces
+    const L=drag.last,dist=Math.hypot(P.x-L.x,P.y-L.y),st=Math.max(1,Math.ceil(dist/(4/view.s)));
+    for(let k=1;k<=st;k++){const x=L.x+(P.x-L.x)*k/st,y=L.y+(P.y-L.y)*k/st,i=sbHitAt(x,y);if(i>=0){if(sb.first==null)sb.first=i;sb.hover.add(i)}}
+    drag.last=P;renderCanvas();return;
   }
   if(drag.mode==='node'||drag.mode==='hd'){
     const s=drag.s,n=ep&&ep.cs[drag.c]?.[drag.i];if(!n)return;
@@ -653,6 +680,7 @@ function endPtr(e){
   ptrs.delete(e.pointerId);
   if(pinch){if(ptrs.size<2)pinch=null;return}
   if(!drag)return;
+  if(drag.mode==='sb'){drag=null;sbApply();renderAfterSel();return}
   if(drag.mode==='guide'){const g=drag.g,L=g.axis==='v'?W:H;guideDrag=null;if(g.pos<-L*.03||g.pos>L*1.03){doc.guides=doc.guides.filter(x=>x!==g);toast('Guide removed')}}
   if((drag.mode==='node'||drag.mode==='hd')&&drag.changed&&ep){normalisePts(drag.s,ep.cs)}
   if(drag.mode==='node'&&drag.rel&&!drag.changed&&ep){
@@ -741,7 +769,7 @@ function enterEdit(id){
   toast('Editing points — drag them, or tap a small dot to add one');
 }
 function exitEdit(){if(!ep)return;ep=null;refresh()}
-function epCheck(){if(ep){const s=byId(ep.id);if(!s||s.type!=='path'||sel.length!==1||sel[0]!==ep.id)ep=null}$('epDone').hidden=!ep}
+function epCheck(){if(ep){const s=byId(ep.id);if(!s||s.type!=='path'||sel.length!==1||sel[0]!==ep.id)ep=null}const b=$('epDone');b.hidden=!ep&&!sb;b.textContent=sb?'Done building':'Done editing points'}
 function epOverlay(k,A){
   const s=byId(ep.id);let o=`<g transform="translate(${s.x} ${s.y}) rotate(${s.r}) scale(${s.fx} ${s.fy})" pointer-events="none"><path d="${scaleD(s.pd,s.w,s.h)}" fill="none" stroke="${A}" stroke-width="${1.3*k}" fill-rule="evenodd"/></g>`;
   const W_=(u,v)=>worldOf(s,u,v);
@@ -818,6 +846,65 @@ function booleanOp(op){
   doc.shapes=doc.shapes.filter(s=>!shp.includes(s));doc.shapes.splice(Math.min(at,doc.shapes.length),0,ns);
   sel=[ns.id];refresh();toast(BOOL[op][1]+(txt.length?' (text left as is)':''));
 }
+// ----- shape builder -----
+const ringArea=r=>{let a=0;for(let i=0;i<r.length-1;i++)a+=r[i][0]*r[i+1][1]-r[i+1][0]*r[i][1];return Math.abs(a)/2};
+const polyArea=p=>ringArea(p[0])-p.slice(1).reduce((t,r)=>t+ringArea(r),0);
+function inRing(x,y,r){let c=false;for(let i=0,j=r.length-1;i<r.length;j=i++){const[xi,yi]=r[i],[xj,yj]=r[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c}return c}
+const inMP=(x,y,mp)=>mp.some(p=>p.reduce((c,r)=>inRing(x,y,r)?!c:c,false));
+function sbStart(){
+  const PC=window.polygonClipping;if(!PC){toast('Shape tools could not load. Check your connection and reload.');return}
+  const shp=doc.shapes.filter(s=>sel.includes(s.id)&&s.type!=='text'&&!s.locked);
+  if(shp.length<2){toast('Select at least two overlapping shapes');return}
+  let R=[],U=null;
+  try{
+    for(const s of shp){const g=flatten(s),f=s.fill!=='none'?s.fill:null,next=[];
+      for(const r of R){PC.intersection(r.mp,g).forEach(p=>next.push({mp:[p],fill:f||r.fill}));PC.difference(r.mp,g).forEach(p=>next.push({mp:[p],fill:r.fill}))}
+      (U?PC.difference(g,U):g).forEach(p=>next.push({mp:[p],fill:f}));
+      U=U?PC.union(U,g):g;R=next.filter(r=>polyArea(r.mp[0])>1)}
+  }catch(e){toast('Those shapes could not be split into pieces');return}
+  sb={ids:new Set(shp.map(s=>s.id)),regions:R,mode:'merge',keep:true,hist:[],hover:new Set()};
+  ep=null;openTab('arrange');refresh();
+  toast(`${R.length} pieces — drag across pieces to join them`);
+}
+function sbRegionsSVG(){
+  const k=1/view.s,A='var(--accent)',D='var(--danger)';
+  const d=mp=>mp.map(p=>p.map(r=>'M'+r.slice(0,-1).map(([x,y])=>x.toFixed(1)+','+y.toFixed(1)).join('L')+'Z').join('')).join('');
+  return sb.regions.map((r,i)=>{const on=sb.hover.has(i),col=on?(sb.mode==='erase'?D:A):null;
+    return `<path d="${d(r.mp)}" fill-rule="evenodd" fill="${r.fill||'transparent'}" stroke="none" pointer-events="none"/>`+
+      `<path d="${d(r.mp)}" fill-rule="evenodd" fill="${col||'transparent'}" fill-opacity="${on?.45:0}" stroke="${on?col:A}" stroke-width="${(on?2:1)*k}" stroke-opacity="${on?1:.7}" pointer-events="none"/>`}).join('');
+}
+function sbHitAt(x,y){for(let i=sb.regions.length-1;i>=0;i--)if(inMP(x,y,sb.regions[i].mp))return i;return -1}
+function sbApply(){
+  const hit=[...sb.hover].sort((a,b)=>a-b);sb.hover=new Set();if(!hit.length)return;
+  sb.hist.push(sb.regions.map(r=>({...r})));
+  if(sb.mode==='erase'){sb.regions=sb.regions.filter((r,i)=>!hit.includes(i));toast(hit.length>1?`Removed ${hit.length} pieces`:'Piece removed');return}
+  if(hit.length===1){sb.regions[hit[0]].touched=true;return}
+  const PC=window.polygonClipping,first=sb.regions[sb.first??hit[0]]||sb.regions[hit[0]];
+  const mp=PC.union(...hit.map(i=>sb.regions[i].mp));
+  const merged={mp,fill:first.fill||sb.regions.find((r,i)=>hit.includes(i)&&r.fill)?.fill||null,touched:true};
+  sb.regions=sb.regions.filter((r,i)=>!hit.includes(i));sb.regions.splice(hit[0],0,merged);
+  toast(`Joined ${hit.length} pieces`);
+}
+function sbFinish(commit){
+  if(!sb)return;
+  if(!commit){sb=null;refresh();toast('Shape builder cancelled');return}
+  const keep=sb.regions.filter(r=>sb.keep||r.touched);
+  pushUndo();
+  const at=doc.shapes.findIndex(s=>sb.ids.has(s.id));
+  const made=keep.map(r=>mpToShape(r.mp,{fill:r.fill||lastFill||'#1b232d',stroke:'none',sw:0,op:1},r.touched?'Built shape':'Piece')).filter(Boolean);
+  doc.shapes=doc.shapes.filter(s=>!sb.ids.has(s.id));doc.shapes.splice(Math.max(0,at),0,...made);
+  sb=null;sel=made.map(s=>s.id);refresh();toast(made.length?`Made ${made.length} shape${made.length>1?'s':''}`:'All pieces removed');
+}
+function pBuilder(){
+  const B=(a,arg,l,on)=>`<button data-act="${a}" data-arg="${arg||''}" ${on!=null?`aria-pressed="${on}"`:''}>${l}</button>`;
+  const t=sb.regions.filter(r=>r.touched).length;
+  return `<div class="sec"><h3>Shape builder · ${sb.regions.length} pieces</h3>
+    <div class="seg" role="group">${B('sbmode','merge','Join',sb.mode==='merge')}${B('sbmode','erase','Remove',sb.mode==='erase')}</div>
+    <p class="note">${sb.mode==='merge'?'Drag your finger across the pieces you want to join into one shape. Tap a single piece to keep it.':'Tap or drag across pieces to throw them away.'} Two fingers still pan and zoom. Undo steps back one change.</p>
+    <div class="btns">${B('sbkeep','',(sb.keep?'✓ ':'')+'Keep pieces I didn’t touch',sb.keep)}</div>
+    ${!sb.keep?`<p class="note">Only the ${t} piece${t===1?'':'s'} you joined or tapped will be kept.</p>`:''}
+    <div class="btns"><button class="pbtn" data-act="sbdone">Done</button><button data-act="sbcancel">Cancel</button></div></div>`;
+}
 function splitApart(){
   const PC=window.polygonClipping,s=selShapes()[0];if(!PC||!s||s.type==='text')return;
   const mp=PC.union(flatten(s));if(mp.length<2){toast('This shape is already one piece');return}
@@ -886,6 +973,17 @@ function act(name,arg){
     case'corient':{resizeCanvas(H,W);return}
     case'scaleart':scaleArt=!scaleArt;break;
     case'bool':return booleanOp(arg);
+    case'sbstart':return sbStart();
+    case'sbmode':sb.mode=arg;break;
+    case'sbkeep':sb.keep=!sb.keep;break;
+    case'sbdone':return sbFinish(true);
+    case'sbcancel':return sbFinish(false);
+    case'bgpick':$('bgfile').click();return;
+    case'bgshow':doc.bgImg.show=!doc.bgImg.show;break;
+    case'bgexp':doc.bgImg.exp=!doc.bgImg.exp;break;
+    case'bgfit':pushUndo();doc.bgImg.fit=arg;break;
+    case'bgmatch':{const b=doc.bgImg;if(!b||!b.iw)return;const f=Math.min(1,4000/Math.max(b.iw,b.ih));resizeCanvas(b.iw*f,b.ih*f);return}
+    case'bgremove':pushUndo();doc.bgImg=null;toast('Background image removed — undo brings it back');break;
     case'group':{if(ss.length<2)return;pushUndo();const g=gid(),ids=new Set(sel);const mem=doc.shapes.filter(s=>ids.has(s.id));
       const top=Math.max(...mem.map(s=>doc.shapes.indexOf(s)));const rest=doc.shapes.filter(s=>!ids.has(s.id));const at=rest.indexOf(doc.shapes.slice(top+1).find(s=>!ids.has(s.id)));
       mem.forEach(s=>s.g=g);rest.splice(at<0?rest.length:at,0,...mem);doc.shapes=rest;inG=null;toast(`Grouped ${mem.length} shapes`);break}
@@ -949,11 +1047,20 @@ function pStyle(){
     <button data-st="stroke" aria-pressed="${styleT==='stroke'}" ${ss.length?'':'disabled'}>${dot(ss[0]?.stroke||'none')}Outline</button>
     <button data-st="bg" aria-pressed="${styleT==='bg'}">${dot(doc.bg)}Canvas</button></div>`;
   if(!ss.length)h+=`<p class="note">Nothing selected, so colours apply to the canvas. Tap a shape to colour it.</p>`;
+  const bgSec=()=>{const b=doc.bgImg,has=b&&bgData[b.id];
+    if(!has)return `<div class="sec"><h3>Background image</h3><div class="btns"><button class="pbtn" data-act="bgpick">${IC.img}<span>Add image</span></button></div><p class="note">Use a photo or sketch as the background, or to trace over.</p></div>`;
+    const F=(v,l)=>`<button data-act="bgfit" data-arg="${v}" aria-pressed="${(b.fit||'fill')===v}">${l}</button>`,op=Math.round((b.op??1)*100);
+    return `<div class="sec"><h3>Background image</h3><div class="bgrow"><img src="${bgData[b.id]}" alt="Background image" class="bgthumb"><div class="btns"><button data-act="bgpick">Replace</button><button data-act="bgremove">Remove</button></div></div>
+      <div class="seg" role="group">${F('fill','Fill')}${F('fit','Fit')}${F('stretch','Stretch')}</div>
+      <div class="row"><label for="bgop">Opacity</label><input type="range" id="bgop" min="5" max="100" step="1" value="${op}"><span class="val" id="bgopv">${op}%</span></div>
+      <div class="btns"><button data-act="bgshow" aria-pressed="${b.show}">${b.show?'✓ ':''}Show</button><button data-act="bgexp" aria-pressed="${b.exp}">${b.exp?'✓ ':''}Include in export</button><button data-act="bgmatch">Match canvas to image</button></div>
+      <p class="note">Tip: turn opacity down and switch off “Include in export” to trace over a sketch.</p></div>`};
   h+=`<div class="sw">${styleT!=='bg'?`<button class="none" data-col="none" aria-pressed="${cur==='none'}" title="No colour" aria-label="No colour"></button>`:''}`+
     PALETTE.map(c=>`<button style="background:${c}" data-col="${c}" aria-pressed="${cur.toLowerCase()===c}" title="${c}" aria-label="${c}"></button>`).join('')+
     `<label title="Custom colour"><input type="color" id="cust" value="${cur==='none'?'#888888':cur}" aria-label="Custom colour"></label></div></div>`;
   const used=[...new Set(doc.shapes.flatMap(s=>[s.fill,s.stroke]).filter(c=>c&&c!=='none'&&!PALETTE.includes(c.toLowerCase())))].slice(0,12);
   if(used.length)h+=`<div class="sec"><h3>In this design</h3><div class="sw">${used.map(c=>`<button style="background:${c}" data-col="${c}" aria-pressed="${cur===c}" title="${c}" aria-label="${c}"></button>`).join('')}</div></div>`;
+  if(styleT==='bg')h+=bgSec();
   if(ss.length){
     const sw=ss[0].stroke==='none'?0:ss[0].sw, op=Math.round(ss[0].op*100);
     h+=`<div class="sec"><div class="row"><label for="sw">Outline</label><input type="range" id="sw" min="0" max="60" step="1" value="${sw}"><span class="val" id="swv">${sw}px</span></div>
@@ -976,6 +1083,7 @@ function pEdit(){
     <div class="btns"><button class="pbtn" data-act="epdone">Done</button></div></div>`;
 }
 function pArrange(){
+  if(sb)return pBuilder();
   if(ep)return pEdit();
   const ss=selShapes(),one=ss.length===1?ss[0]:null,n=ss.length;
   if(!n){
@@ -992,8 +1100,8 @@ function pArrange(){
   const B=(a,arg,ic,label,dis)=>`<button data-act="${a}" data-arg="${arg||''}" ${dis?'disabled':''} title="${label}">${IC[ic]}<span>${label}</span></button>`;
   let h='';
   const nShp=ss.filter(s=>s.type!=='text').length;
-  if(n>=2)h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('bool','union','bunion','Combine',nShp<2)}${B('bool','cut','bcut','Cut out',nShp<2)}${B('bool','inter','binter','Intersect',nShp<2)}${B('bool','xor','bxor','Remove overlap',nShp<2)}</div>
-    <p class="note">${nShp<2?'Select at least two shapes (text can’t be combined).':'Cut out uses the bottom shape and removes everything stacked on top of it. The result takes the bottom shape’s colours.'}</p></div>`;
+  if(n>=2)h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('bool','union','bunion','Combine',nShp<2)}${B('bool','cut','bcut','Cut out',nShp<2)}${B('bool','inter','binter','Intersect',nShp<2)}${B('bool','xor','bxor','Remove overlap',nShp<2)}</div><div class="btns">${B('sbstart','','bbuild','Shape builder',nShp<2)}</div>
+    <p class="note">${nShp<2?'Select at least two shapes (text can’t be combined).':'Shape builder splits overlapping shapes into pieces you can join or remove by dragging. Cut out uses the bottom shape and removes everything stacked on top of it.'}</p></div>`;
   else if(one&&one.type!=='text')h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('editpts','','bpts','Edit points')}${one.type==='path'?B('split','','bsplit','Split apart'):''}</div><p class="note">Tip: double-tap a shape to edit its points.</p></div>`;
   const hasG=ss.some(s=>s.g);
   if(n>=2||hasG)h+=`<div class="sec"><h3>Group</h3><div class="btns">${n>=2&&!oneGroup()?B('group','','bgroup','Group'):''}${hasG?B('ungroup','','bungroup','Ungroup'):''}</div>${oneGroup()?'<p class="note">Tap any part to pick up the whole group. Double-tap to work on one shape inside it.</p>':''}</div>`;
@@ -1100,6 +1208,7 @@ panel.addEventListener('click',e=>{
 let editing=false;
 panel.addEventListener('input',e=>{
   const el=e.target,ss=selShapes();
+  if(el.id==='bgop'&&doc.bgImg){if(!editing){pushUndo();editing=true}doc.bgImg.op=el.value/100;$('bgopv').textContent=el.value+'%';renderCanvas();return}
   if(el.id==='gap'){gapVal=parseFloat(el.value)||0;return}
   if(el.id==='gmar'){gmarVal=parseFloat(el.value)||0;return}
   if(el.id==='gsz'){const v=parseFloat(el.value);if(v>=2&&v<=2000){doc.grid.size=v;renderCanvas()}return}
@@ -1133,26 +1242,40 @@ $('bSnap').onclick=()=>{snapOn=!snapOn;toast(snapOn?'Smart snapping on':'Smart s
 $('bMulti').onclick=()=>{multi=!multi;toast(multi?'Multi-select on: tap shapes to add or remove':'Multi-select off');renderTop()};
 $('bDup').onclick=()=>act('dup');$('bDel').onclick=()=>act('del');$('bUndo').onclick=doUndo;$('bRedo').onclick=doRedo;
 $('zoom').onclick=fit;
-$('epDone').onclick=exitEdit;
-{const fb=$('fbar').children;fb[0].innerHTML=IC.fh+'<span>Mirror</span>';fb[1].innerHTML=IC.fv+'<span>Flip</span>';
+$('bgfile').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  const url=URL.createObjectURL(f),img=new Image();
+  img.onload=()=>{
+    // shrink big phone photos so the design still saves on the device
+    const m=2400,sc=Math.min(1,m/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement('canvas');
+    c.width=Math.round(img.naturalWidth*sc);c.height=Math.round(img.naturalHeight*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);
+    const png=/png|gif|webp/.test(f.type)&&c.width*c.height<1.5e6,data=c.toDataURL(png?'image/png':'image/jpeg',.85);
+    const id=gid();bgData={[id]:data};pushUndo();
+    doc.bgImg={id,fit:'fill',op:1,show:true,exp:true,iw:img.naturalWidth,ih:img.naturalHeight};
+    try{localStorage.setItem('tessera.bgimg',JSON.stringify({id,data}))}catch(err){toast('Image added, but it is too big to keep after you close the app')}
+    sel=[];styleT='bg';openTab('style');refresh();toast('Background image added');
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);toast('That file could not be opened as an image')};img.src=url;});
+$('epDone').onclick=()=>sb?sbFinish(true):exitEdit();
+{const fb=$('fbar').children;fb[0].innerHTML=IC.fh+'<span>Mirror</span>';fb[1].innerHTML=IC.fv+'<span>Flip</span>';fb[2].innerHTML=IC.bbuild+'<span>Builder</span>';
  $('fbar').addEventListener('click',e=>{const b=e.target.closest('[data-qa]');if(b)act(b.dataset.qa,b.dataset.arg)});}
 let menuEl=null;
 $('bMenu').onclick=e=>{e.stopPropagation();if(menuEl){menuEl.remove();menuEl=null;return}
   menuEl=document.createElement('div');menuEl.className='menu';
-  menuEl.innerHTML=`<button data-m="export">${IC.img}Export image &amp; SVG</button><button data-m="canvas">${IC.ratio}Canvas size</button><button data-m="fit">${IC.fit}Fit canvas to screen</button><hr><button data-m="new">${IC.file}New blank canvas</button><button data-m="sample">${IC.spark}Load example</button>`;
+  menuEl.innerHTML=`<button data-m="export">${IC.img}Export image &amp; SVG</button><button data-m="canvas">${IC.ratio}Canvas size</button><button data-m="bg">${IC.img}Background image</button><button data-m="fit">${IC.fit}Fit canvas to screen</button><hr><button data-m="new">${IC.file}New blank canvas</button><button data-m="sample">${IC.spark}Load example</button>`;
   document.body.appendChild(menuEl);
   menuEl.onclick=ev=>{const m=ev.target.closest('[data-m]')?.dataset.m;if(!m)return;menuEl.remove();menuEl=null;
     if(m==='fit')fit();
     if(m==='new'){pushUndo();doc={bg:'#ffffff',W,H,shapes:[]};sel=[];tab='shapes';refresh();toast('New canvas — undo brings the old one back')}
     if(m==='sample'){pushUndo();doc=sample();syncSize();sel=[];fit();refresh()}
     if(m==='canvas'){sel=[];openTab('arrange');refresh()}
+    if(m==='bg'){sel=[];styleT='bg';openTab('style');refresh();if(!(doc.bgImg&&bgData[doc.bgImg.id]))$('bgfile').click()}
     if(m==='export')openExport();
   };
 };
 document.addEventListener('pointerdown',e=>{if(menuEl&&!menuEl.contains(e.target)&&e.target!==$('bMenu')){menuEl.remove();menuEl=null}});
 
 // ---------- export ----------
-function exportSVG(){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="${doc.bg}"/>${doc.shapes.map(s=>shapeSVG(s,true)).join('')}</svg>`}
+function exportSVG(){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><defs><clipPath id="artclip"><rect width="${W}" height="${H}"/></clipPath></defs><rect width="${W}" height="${H}" fill="${doc.bg}"/>${bgImgSVG(true)}${doc.shapes.map(s=>shapeSVG(s,true)).join('')}</svg>`}
 function openExport(){
   const svg=exportSVG();
   const m=document.createElement('div');m.className='modal';
@@ -1183,8 +1306,10 @@ addEventListener('keydown',e=>{
   if(mod&&k==='y'){e.preventDefault();doRedo();return}
   if(mod&&k==='d'){e.preventDefault();act('dup');return}
   if(mod&&k==='a'){e.preventDefault();act('selall');return}
-  if(k==='delete'||k==='backspace'){e.preventDefault();act(ep&&ep.si?'epdel':'del');return}
-  if(k==='escape'){if(ep)return exitEdit();sel=[];inG=null;refresh();return}
+  if(k==='alt'&&sb){sb.mode=sb.mode==='merge'?'erase':'merge';renderPanel();return}
+  if(k==='delete'||k==='backspace'){if(sb)return;e.preventDefault();act(ep&&ep.si?'epdel':'del');return}
+  if(k==='escape'){if(sb)return sbFinish(false);if(ep)return exitEdit();sel=[];inG=null;refresh();return}
+  if(e.shiftKey&&!mod&&k==='m'){e.preventDefault();sb?sbFinish(true):act('sbstart');return}
   if(e.shiftKey&&!mod&&(k==='h'||k==='v')){e.preventDefault();act('flip',k);return}
   if(mod&&k==='g'){e.preventDefault();act(e.shiftKey?'ungroup':'group');return}
   if(k==='0'&&mod){e.preventDefault();fit();return}
