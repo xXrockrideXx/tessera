@@ -399,8 +399,8 @@ function dimMark(s,dim,k){
 function overlay(){
   const k=1/view.s, A='var(--accent)';
   let o='';
-  for(const key of['w','h']){const m=sizeMatch[key];if(!m)continue;const me=selShapes()[0];if(me)o+=dimMark(me,key,k);
-    m.ids.forEach(id=>{const s=byId(id);if(!s)return;o+=dimMark(s,Math.abs(s.w-m.v)<.05?'w':'h',k)})}
+  for(const key of['w','h']){const m=sizeMatch[key];if(!m)continue;const sl=selShapes();const me=sl.length>1?boxShape(union(sl)):sl[0];if(me)o+=dimMark(me,key,k);
+    m.marks.forEach(mk=>{o+=dimMark(mk.t,mk.dim,k)})}
   const ss=selShapes();
   if(sb){}
   else if(ep){o+=epOverlay(k,A)}
@@ -514,6 +514,26 @@ function addShape(type){
 }
 
 // ---------- snapping ----------
+// ----- size matching -----
+const boxShape=b=>({x:(b.l+b.r)/2,y:(b.t+b.b)/2,w:b.r-b.l,h:b.b-b.t,r:0});
+function sizeCands(exclude){
+  const c=doc.shapes.filter(o=>!exclude.includes(o.id)&&!o.hidden).map(o=>({t:o,w:o.w,h:o.h}));
+  groupBoxes(exclude).forEach(b=>{const t=boxShape(b);c.push({t,w:t.w,h:t.h})});
+  return c;
+}
+function nearSize(v,axis,cands){
+  const thr=8/view.s,other=axis==='w'?'h':'w';let best=null,bd=thr;
+  for(const c of cands){const d=Math.abs(c[axis]-v);if(d<bd-.01){bd=d;best={v:c[axis],d}}}
+  if(best)return best;bd=thr*.6;
+  for(const c of cands){const d=Math.abs(c[other]-v);if(d<bd-.01){bd=d;best={v:c[other],d}}}
+  return best;
+}
+function sizeMarks(v,axis,cands){
+  const other=axis==='w'?'h':'w';
+  let marks=cands.filter(c=>Math.abs(c[axis]-v)<.06).map(c=>({t:c.t,dim:axis}));
+  if(!marks.length)marks=cands.filter(c=>Math.abs(c[other]-v)<.06).map(c=>({t:c.t,dim:other}));
+  return marks.length?{v,marks}:null;
+}
 function groupBoxes(exclude){
   const m={};doc.shapes.forEach(s=>{if(s.g&&!s.hidden&&!exclude.includes(s.id))(m[s.g]=m[s.g]||[]).push(s)});
   return Object.values(m).filter(a=>a.length>1).map(union);
@@ -639,12 +659,13 @@ cv.addEventListener('pointermove',e=>{
       let snX=null,snY=null;
       if(hx){const[a,g]=bestSnap([ax+hx*w0*sx],snapTargets('x',sel));if(a!=null&&Math.abs(g-ax)>6)snX={k:Math.abs(g-ax)/w0,g}}
       if(hy){const[a,g]=bestSnap([ay+hy*h0*sy],snapTargets('y',sel));if(a!=null&&Math.abs(g-ay)>6)snY={k:Math.abs(g-ay)/h0,g}}
-      if(SN.obj){const thr=8/view.s,dims=[...groupBoxes(sel).flatMap(b=>[b.r-b.l,b.b-b.t]),...doc.shapes.filter(o=>!sel.includes(o.id)&&!o.hidden).flatMap(o=>[o.w,o.h])];
-        const near=v=>{let best=null,bd=thr;for(const t of dims){const d=Math.abs(t-v);if(d<bd){bd=d;best=t}}return best};
-        if(hx&&!snX){const t=near(w0*sx);if(t!=null)snX={k:t/w0}} if(hy&&!snY){const t=near(h0*sy);if(t!=null)snY={k:t/h0}}}
+      if(SN.obj){const cands=sizeCands(sel);
+        if(hx&&!snX){const t=nearSize(w0*sx,'w',cands);if(t)snX={k:t.v/w0}} if(hy&&!snY){const t=nearSize(h0*sy,'h',cands);if(t)snY={k:t.v/h0}}}
       if(prop){const pick=snX||snY;if(pick){sx=sy=pick.k;if(pick===snX&&snX.g!=null)guides.x=snX.g;if(pick===snY&&snY.g!=null)guides.y=snY.g}}
       else{if(snX){sx=snX.k;if(snX.g!=null)guides.x=snX.g}if(snY){sy=snY.k;if(snY.g!=null)guides.y=snY.g}}
     }
+    sizeMatch={w:null,h:null};
+    if(snapOn&&SN.obj){const cands=sizeCands(sel);if(hx)sizeMatch.w=sizeMarks(w0*sx,'w',cands);if(hy)sizeMatch.h=sizeMarks(h0*sy,'h',cands)}
     starts.forEach(o=>{const c=Math.cos(rad(o.r)),n=Math.sin(rad(o.r));o.s.x=ax+(o.x-ax)*sx;o.s.y=ay+(o.y-ay)*sy;
       o.s.w=o.w*Math.hypot(sx*c,sy*n);o.s.h=o.h*Math.hypot(sx*n,sy*c)});
     drag.changed=true;renderCanvas();return;
@@ -677,18 +698,14 @@ cv.addEventListener('pointermove',e=>{
       if(hy){const ax=sx?'y':'x',p0=sx?A.y:A.x,dir=hy*(sx?Math.cos(rad(s.r)):-Math.sin(rad(s.r)));const[adj,g]=bestSnap([p0+dir*h],snapTargets(ax,[s.id]));if(adj!=null&&Math.abs(g-p0)>6){h=Math.abs(g-p0);edgeY=true;guides[ax]=g}}
     }
     if(snapOn&&SN.obj){
-      const others=doc.shapes.filter(o=>o.id!==s.id&&!o.hidden), thr=8/view.s;
-      // candidate sizes: other shapes' widths and heights (so a tall bar can match a wide one too)
-      const gdims=SN.obj?groupBoxes([s.id]).flatMap(b=>[b.r-b.l,b.b-b.t]):[];
-      const near=(v)=>{let best=null,bd=thr;for(const t of gdims){const d=Math.abs(t-v);if(d<bd-0.01){bd=d;best=t}}for(const o of others)for(const t of[o.w,o.h]){const d=Math.abs(t-v);if(d<bd-0.01){bd=d;best=t}}return best==null?null:{v:best,d:bd}};
-      const mw=hx&&!edgeX?near(w):null, mh=hy&&!edgeY?near(h):null;
+      const cands=sizeCands([s.id]);
+      // width snaps to widths and height to heights first; the other side only as a fallback
+      const mw=hx&&!edgeX?nearSize(w,'w',cands):null, mh=hy&&!edgeY?nearSize(h,'h',cands):null;
       if(prop){
         const pick=mw&&(!mh||mw.d<=mh.d)?'w':mh?'h':null;
         if(pick==='w'){const k=mw.v/w;w=mw.v;h*=k}else if(pick==='h'){const k=mh.v/h;h=mh.v;w*=k}
       } else { if(mw)w=mw.v; if(mh)h=mh.v; }
-      const tag=(v,dim)=>({v,ids:others.filter(o=>Math.abs(o.w-v)<.05||Math.abs(o.h-v)<.05).map(o=>o.id),dim});
-      if(hx&&others.some(o=>Math.abs(o.w-w)<.05||Math.abs(o.h-w)<.05))sizeMatch.w=tag(w,'w');
-      if(hy&&others.some(o=>Math.abs(o.w-h)<.05||Math.abs(o.h-h)<.05))sizeMatch.h=tag(h,'h');
+      if(hx)sizeMatch.w=sizeMarks(w,'w',cands); if(hy)sizeMatch.h=sizeMarks(h,'h',cands);
     }
     s.w=Math.round(w*10)/10;s.h=Math.round(h*10)/10;
     if(sizeMatch.w)s.w=sizeMatch.w.v; if(sizeMatch.h)s.h=sizeMatch.h.v;
