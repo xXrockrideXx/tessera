@@ -855,7 +855,8 @@ function flatten(s){
   }
   if(ring&&ring.length>2)rings.push(ring);
   // even-odd fill: XOR the subpaths together so holes (like the ring's) come out right
-  const PC=window.polygonClipping;let g=[[rings[0]]];for(let k=1;k<rings.length;k++)g=PC.xor(g,[[rings[k]]]);return g;
+  const PC=window.polygonClipping;if(!rings.length)return[];if(rings.length===1)return[[rings[0]]];
+  return clipRetry(rs=>{let g=rs[0];for(let k=1;k<rs.length;k++)g=PC.xor(g,rs[k]);return g},rings.map(r=>[[r]]));
 }
 function mpToShape(mp,base,name){
   const pts=mp.flat(2);if(!pts.length)return null;
@@ -874,10 +875,8 @@ function booleanOp(op){
   if(shp.length<2){toast(txt.length?'Text can’t be combined — select at least two shapes':'Select at least two shapes');return}
   const geo=shp.map(flatten);let res;
   try{
-    if(op==='union')res=PC.union(...geo);
-    else if(op==='inter')res=PC.intersection(...geo);
-    else if(op==='xor')res=PC.xor(...geo);
-    else res=PC.difference(geo[0],...geo.slice(1));
+    res=clipRetry(g=>op==='union'?PC.union(...g):op==='inter'?PC.intersection(...g):op==='xor'?PC.xor(...g):PC.difference(g[0],...g.slice(1)),geo);
+    if(op!=='union'&&op!=='xor')res=res.filter(p=>polyArea(p)>1);
   }catch(e){toast('Those shapes could not be combined');return}
   const base=shp[0];
   const ns=mpToShape(res,base,BOOL[op][0]);
@@ -886,6 +885,16 @@ function booleanOp(op){
   const at=doc.shapes.indexOf(base);
   doc.shapes=doc.shapes.filter(s=>!shp.includes(s));doc.shapes.splice(Math.min(at,doc.shapes.length),0,ns);
   sel=[ns.id];refresh();toast(BOOL[op][1]+(txt.length?' (text left as is)':''));
+}
+// The clipping maths can trip over shapes that sit exactly on top of each other or touch at the same
+// points. If it does, retry with every point nudged by a fraction of a pixel, which is invisible.
+function nudge(g,amp,seed){let n=seed*9973+1;const rnd=()=>{n=(n*16807)%2147483647;return n/2147483647-.5};
+  return g.map(poly=>poly.map(ring=>{const out=ring.map(([x,y])=>amp?[x+rnd()*amp,y+rnd()*amp]:[Math.round(x*1000)/1000,Math.round(y*1000)/1000]);
+    const a=ring[0],z=ring[ring.length-1];if(a[0]===z[0]&&a[1]===z[1])out[out.length-1]=out[0];return out}))}
+function clipRetry(fn,geos){
+  const steps=[null,0,.02,.08,.3,1];let err;
+  for(let k=0;k<steps.length;k++){try{return fn(steps[k]==null?geos:geos.map((g,i)=>nudge(g,steps[k],i+1+k*31)))}catch(e){err=e}}
+  throw err;
 }
 // ----- shape builder -----
 const ringArea=r=>{let a=0;for(let i=0;i<r.length-1;i++)a+=r[i][0]*r[i+1][1]-r[i+1][0]*r[i][1];return Math.abs(a)/2};
@@ -896,13 +905,14 @@ function sbStart(){
   const PC=window.polygonClipping;if(!PC){toast('Shape tools could not load. Check your connection and reload.');return}
   const shp=doc.shapes.filter(s=>sel.includes(s.id)&&s.type!=='text'&&!s.locked);
   if(shp.length<2){toast('Select at least two overlapping shapes');return}
-  let R=[],U=null;
-  try{
-    for(const s of shp){const g=flatten(s),f=s.fill!=='none'?s.fill:null,next=[];
+  let R;
+  const compute=geos=>{let R=[],U=null;
+    geos.forEach((g,i)=>{const s=shp[i],f=s.fill!=='none'?s.fill:null,next=[];
       for(const r of R){PC.intersection(r.mp,g).forEach(p=>next.push({mp:[p],fill:f||r.fill}));PC.difference(r.mp,g).forEach(p=>next.push({mp:[p],fill:r.fill}))}
       (U?PC.difference(g,U):g).forEach(p=>next.push({mp:[p],fill:f}));
-      U=U?PC.union(U,g):g;R=next.filter(r=>polyArea(r.mp[0])>1)}
-  }catch(e){toast('Those shapes could not be split into pieces');return}
+      U=U?PC.union(U,g):g;R=next.filter(r=>polyArea(r.mp[0])>1)});
+    return R};
+  try{R=clipRetry(compute,shp.map(flatten))}catch(e){toast('Those shapes could not be split into pieces. Try moving one slightly.');return}
   sb={ids:new Set(shp.map(s=>s.id)),regions:R,mode:'merge',keep:true,hist:[],hover:new Set()};
   ep=null;openTab('arrange');refresh();
   toast(`${R.length} pieces — drag across pieces to join them`);
