@@ -514,9 +514,19 @@ function addShape(type){
 }
 
 // ---------- snapping ----------
+function groupBoxes(exclude){
+  const m={};doc.shapes.forEach(s=>{if(s.g&&!s.hidden&&!exclude.includes(s.id))(m[s.g]=m[s.g]||[]).push(s)});
+  return Object.values(m).filter(a=>a.length>1).map(union);
+}
+function bgRect(){const b=doc.bgImg;if(!b||!b.show||!bgData[b.id]||b.fit!=='fit'||!b.iw)return null;
+  const k=Math.min(W/b.iw,H/b.ih),w=b.iw*k,h=b.ih*k;return{l:(W-w)/2,r:(W+w)/2,t:(H-h)/2,b:(H+h)/2}}
 function snapTargets(axis,exclude,noGuides){
   const T=[];if(!snapOn)return T;const L=axis==='x'?W:H;
-  if(SN.obj){T.push(0,L/2,L);doc.shapes.filter(s=>!exclude.includes(s.id)&&!s.hidden).forEach(s=>{const b=aabb(s);if(axis==='x')T.push(b.l,(b.l+b.r)/2,b.r);else T.push(b.t,(b.t+b.b)/2,b.b)})}
+  if(SN.obj){T.push(0,L/2,L);doc.shapes.filter(s=>!exclude.includes(s.id)&&!s.hidden).forEach(s=>{const b=aabb(s);if(axis==='x')T.push(b.l,(b.l+b.r)/2,b.r);else T.push(b.t,(b.t+b.b)/2,b.b)});
+    // a group's outer edges and centre count too, not just its members
+    groupBoxes(exclude).forEach(b=>{if(axis==='x')T.push(b.l,(b.l+b.r)/2,b.r);else T.push(b.t,(b.t+b.b)/2,b.b)});
+    // background image edges when it is fitted inside the canvas
+    const ib=bgRect();if(ib){if(axis==='x')T.push(ib.l,(ib.l+ib.r)/2,ib.r);else T.push(ib.t,(ib.t+ib.b)/2,ib.b)}}
   if(SN.guide&&doc.gopt.show&&!noGuides)doc.guides.filter(g=>g.axis===(axis==='x'?'v':'h')).forEach(g=>T.push(g.pos));
   return T;
 }
@@ -621,7 +631,20 @@ cv.addEventListener('pointermove',e=>{
   }
   if(drag.mode==='gresize'){
     const{hx,hy,ax,ay,w0,h0,starts}=drag;let sx=hx?Math.max(6,(P.x-ax)*hx)/w0:1,sy=hy?Math.max(6,(P.y-ay)*hy)/h0:1;
-    if(hx&&hy&&(lockRatio||e.shiftKey||starts.some(o=>o.s.type==='text'))){const k=Math.max(sx,sy);sx=sy=k}
+    const prop=hx&&hy&&(lockRatio||e.shiftKey||starts.some(o=>o.s.type==='text'));
+    if(prop){const k=Math.max(sx,sy);sx=sy=k}
+    guides={x:null,y:null};
+    if(snapOn){
+      // moving edge snaps to shapes, groups, guides and grid; otherwise the overall size matches another shape or group
+      let snX=null,snY=null;
+      if(hx){const[a,g]=bestSnap([ax+hx*w0*sx],snapTargets('x',sel));if(a!=null&&Math.abs(g-ax)>6)snX={k:Math.abs(g-ax)/w0,g}}
+      if(hy){const[a,g]=bestSnap([ay+hy*h0*sy],snapTargets('y',sel));if(a!=null&&Math.abs(g-ay)>6)snY={k:Math.abs(g-ay)/h0,g}}
+      if(SN.obj){const thr=8/view.s,dims=[...groupBoxes(sel).flatMap(b=>[b.r-b.l,b.b-b.t]),...doc.shapes.filter(o=>!sel.includes(o.id)&&!o.hidden).flatMap(o=>[o.w,o.h])];
+        const near=v=>{let best=null,bd=thr;for(const t of dims){const d=Math.abs(t-v);if(d<bd){bd=d;best=t}}return best};
+        if(hx&&!snX){const t=near(w0*sx);if(t!=null)snX={k:t/w0}} if(hy&&!snY){const t=near(h0*sy);if(t!=null)snY={k:t/h0}}}
+      if(prop){const pick=snX||snY;if(pick){sx=sy=pick.k;if(pick===snX&&snX.g!=null)guides.x=snX.g;if(pick===snY&&snY.g!=null)guides.y=snY.g}}
+      else{if(snX){sx=snX.k;if(snX.g!=null)guides.x=snX.g}if(snY){sy=snY.k;if(snY.g!=null)guides.y=snY.g}}
+    }
     starts.forEach(o=>{const c=Math.cos(rad(o.r)),n=Math.sin(rad(o.r));o.s.x=ax+(o.x-ax)*sx;o.s.y=ay+(o.y-ay)*sy;
       o.s.w=o.w*Math.hypot(sx*c,sy*n);o.s.h=o.h*Math.hypot(sx*n,sy*c)});
     drag.changed=true;renderCanvas();return;
@@ -656,7 +679,8 @@ cv.addEventListener('pointermove',e=>{
     if(snapOn&&SN.obj){
       const others=doc.shapes.filter(o=>o.id!==s.id&&!o.hidden), thr=8/view.s;
       // candidate sizes: other shapes' widths and heights (so a tall bar can match a wide one too)
-      const near=(v)=>{let best=null,bd=thr;for(const o of others)for(const t of[o.w,o.h]){const d=Math.abs(t-v);if(d<bd-0.01){bd=d;best=t}}return best==null?null:{v:best,d:bd}};
+      const gdims=SN.obj?groupBoxes([s.id]).flatMap(b=>[b.r-b.l,b.b-b.t]):[];
+      const near=(v)=>{let best=null,bd=thr;for(const t of gdims){const d=Math.abs(t-v);if(d<bd-0.01){bd=d;best=t}}for(const o of others)for(const t of[o.w,o.h]){const d=Math.abs(t-v);if(d<bd-0.01){bd=d;best=t}}return best==null?null:{v:best,d:bd}};
       const mw=hx&&!edgeX?near(w):null, mh=hy&&!edgeY?near(h):null;
       if(prop){
         const pick=mw&&(!mh||mw.d<=mh.d)?'w':mh?'h':null;
