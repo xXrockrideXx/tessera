@@ -422,6 +422,9 @@ const LIB={
 };
 const DEF={}; for(const g in LIB) for(const k in LIB[g]) DEF[k]=LIB[g][k];
 const shapeD=s=>s.type==='path'?s.pd:DEF[s.type].d;
+// a shape opened for point editing but left unchanged goes back to being that shape (so a circle stays a circle)
+const PD2TYPE={};for(const k in DEF)PD2TYPE[DEF[k].d]=k;
+function restoreUntouched(){for(const s of doc.shapes){if(s.type==='path'&&s.pd&&(!ep||ep.id!==s.id)&&PD2TYPE[s.pd]){s.type=PD2TYPE[s.pd];delete s.pd;delete s.name}}}
 const shapeN=s=>s.type==='text'?'text':s.type==='path'?(s.name||'Custom shape'):DEF[s.type].n;
 const scaleD=(d,w,h)=>{let i=0;return d.replace(/-?\d*\.?\d+(?:e-?\d+)?/g,m=>{const v=parseFloat(m);return +((i++%2===0?(v-.5)*w:(v-.5)*h)).toFixed(2)})};
 const FONTS={display:'"Bricolage Grotesque", sans-serif',serif:'"DM Serif Display", Georgia, serif',sans:'"Instrument Sans", Helvetica, sans-serif',mono:'"JetBrains Mono", monospace'};
@@ -442,7 +445,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='18';
+const APP_VERSION='19';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -581,7 +584,7 @@ function shapesSVG(){
   return o;
 }
 function renderCanvas(){
-  epCheck();
+  epCheck();restoreUntouched();
   if(rp&&(ep||sb||!sel.length||sel.length!==rp.ids.length||rp.ids.some(id=>!sel.includes(id))))rp=null;
   world.setAttribute('transform',`matrix(${view.s} 0 0 ${view.s} ${view.tx} ${view.ty})`);
   world.innerHTML=`<defs><clipPath id="artclip"><rect width="${W}" height="${H}"/></clipPath></defs><rect class="artshadow" x="0" y="0" width="${W}" height="${H}" fill="${doc.bg}"/>`+bgImgSVG(false)+
@@ -647,7 +650,7 @@ function groupBoxes(exclude){
 }
 function bgRect(){const b=doc.bgImg;if(!b||!b.show||!bgData[b.id]||b.fit!=='fit'||!b.iw)return null;
   const k=Math.min(W/b.iw,H/b.ih),w=b.iw*k,h=b.ih*k;return{l:(W-w)/2,r:(W+w)/2,t:(H-h)/2,b:(H+h)/2}}
-const isCircle=s=>s&&s.type==='ellipse'&&Math.abs(s.w-s.h)<Math.max(s.w,s.h)*.04;
+const isCircle=s=>s&&(s.type==='ellipse'||(s.type==='path'&&PD2TYPE[s.pd]==='ellipse'))&&Math.abs(s.w-s.h)<Math.max(s.w,s.h)*.04;
 const radOf=s=>(s.w+s.h)/4;
 function polarSnap(st,rdx,rdy){
   const s=st.s;if(!isCircle(s))return null;
@@ -716,7 +719,7 @@ cv.addEventListener('pointerdown',e=>{
     if(ep.sel.length&&(!ep.si||!epIsSel(...ep.si)))ep.si=ep.sel[ep.sel.length-1];
     if(ep.si&&epIsSel(...ep.si)&&ep.cs[ep.si[0]]?.[ep.si[1]]){const n=ep.cs[ep.si[0]][ep.si[1]];
       drag={mode:'node',prev,s,c:ep.si[0],i:ep.si[1],rel:true,P0:P,w0:worldOf(s,n.x,n.y),sx:e.clientX,sy:e.clientY,tapId:sEl?sEl.dataset.id:null};return}
-    if(!sEl||sEl.dataset.id!==ep.id){ if(!sEl){drag=null;renderAfterSel();return} ep=null; }
+    if(!sEl||sEl.dataset.id!==ep.id){ if(!sEl){drag={mode:'epempty'};return} ep=null; }
   }
   if(gEl&&!hEl){const g=doc.guides.find(x=>x.id===gEl.dataset.g);if(g){drag={mode:'guide',prev,g};guideDrag=g;renderCanvas();return}}
   if(hEl&&sel.length>1){
@@ -880,6 +883,10 @@ function endPtr(e){
   if(drag.mode==='node'&&drag.rel&&!drag.changed&&ep){
     // a plain tap: empty space lets go of the points, another shape leaves point editing and selects it
     if(!drag.tapId){if(!ep.multi){ep.sel=[];ep.si=null}}else if(drag.tapId!==ep.id){ep=null;sel=expand([drag.tapId])}
+  }
+  else if(drag.mode==='epempty'&&ep){
+    // clicking empty canvas with no points picked leaves point editing
+    ep=null;toast('Finished editing points')
   }
   if(drag.changed&&drag.prev){pushUndo(drag.prev)}
   if(drag.mode==='move'&&!drag.changed&&drag.remote){if(drag.tapId){const t=byId(drag.tapId);if(t&&t.g&&inG===t.g)sel=[t.id];else{inG=null;sel=expand([drag.tapId])}}else{sel=[];inG=null}}
