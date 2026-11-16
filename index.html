@@ -152,6 +152,12 @@ select.tin{padding:8px 10px}
 .pre[aria-pressed="true"]{background:var(--accent-soft);box-shadow:inset 0 0 0 1.5px var(--accent)}
 .pre .pvw{width:30px;height:30px;display:grid;place-items:center;flex:0 0 auto}.pre .pv{background:var(--panel);border:1.5px solid var(--muted);border-radius:3px}
 .pre b{display:block;font-weight:600;font-size:13px}.pre small{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.ptypes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.ptype{display:grid;justify-items:center;gap:4px;padding:10px 4px 8px;border-radius:12px;background:var(--sunk);font-size:12px;color:var(--muted)}
+.ptype svg{width:30px;height:30px;color:var(--ink)}
+.ptype[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.ptype[aria-pressed="true"] svg{color:var(--accent)}
+.ptype:disabled{opacity:.4;cursor:default}
 .layers{display:grid;gap:4px}
 .bgrow{display:flex;gap:12px;align-items:center}
 .bgthumb{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:0 0 auto}
@@ -218,7 +224,7 @@ select.tin{padding:8px 10px}
 .sheet .list svg{width:20px;height:20px}
 .danger{color:var(--danger)!important}
 .btns .pbtn.dng{background:var(--danger);color:#fff}
-.toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:9px 14px;border-radius:999px;font-size:13px;z-index:50;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+.toast{position:fixed;left:50%;top:124px;transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:9px 14px;border-radius:999px;font-size:13px;z-index:50;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -355,6 +361,12 @@ const IC={
  qdown:I('<path d="M5 5h14" stroke-dasharray="2.5 2.5"/><path d="M12 9v11M8 16l4 4 4-4"/>'),
  rot90:I('<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/>'),
  wrench:I('<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3-6.5-6.5a4 4 0 0 1 5-5L10 7.8z" stroke-opacity="0"/><path d="M15 4.2a4.5 4.5 0 0 0-5.6 5.9L3.6 15.9a1.9 1.9 0 0 0 2.7 2.7l5.8-5.8a4.5 4.5 0 0 0 5.9-5.6l-2.6 2.6-2.4-.6-.6-2.4z"/>'),
+ ptCorner:I('<path d="M5 19V7h14" stroke-width="2"/><rect x="3" y="5" width="4" height="4" fill="currentColor" stroke="none"/>'),
+ ptSym:I('<path d="M3 20C3 10 7 7 12 7s9 3 9 13" stroke-width="2"/><path d="M5 7h14" stroke-opacity=".55"/><circle cx="12" cy="7" r="2" fill="currentColor" stroke="none"/><circle cx="5" cy="7" r="1.5"/><circle cx="19" cy="7" r="1.5"/>'),
+ ptAsym:I('<path d="M3 20C4 12 6 7 10 7s10 5 11 13" stroke-width="2"/><path d="M6 7h13" stroke-opacity=".55"/><circle cx="10" cy="7" r="2" fill="currentColor" stroke="none"/><circle cx="6" cy="7" r="1.5"/><circle cx="19" cy="7" r="1.5"/>'),
+ ptFree:I('<path d="M3 20C5 13 8 9 12 8c3 2 7 6 9 12" stroke-width="2"/><path d="M12 8 6 4M12 8l6-5" stroke-opacity=".55"/><circle cx="12" cy="8" r="2" fill="currentColor" stroke="none"/><circle cx="6" cy="4" r="1.5"/><circle cx="18" cy="3" r="1.5"/>'),
+ ptAll:I('<path d="M12 4 20 18H4z" stroke-dasharray="2.5 2"/><circle cx="12" cy="4" r="2" fill="currentColor"/><circle cx="20" cy="18" r="2" fill="currentColor"/><circle cx="4" cy="18" r="2" fill="currentColor"/>'),
+ minus:I('<path d="M5 12h14"/>'),
  bsplit:I('<path d="M4 4h7v7H4zM13 13h7v7h-7z" fill="currentColor" fill-opacity=".3"/><path d="M14 4l6 6M20 4l-6 6" stroke-opacity=".5"/>'),
  ratio:I('<rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M8 10h3M13 14h3"/>'),
  file:I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>'), fit:I('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
@@ -439,7 +451,7 @@ const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const save=()=>{try{localStorage.setItem('tessera.doc',JSON.stringify(doc))}catch(e){}queueSave()};
 const snap=()=>JSON.stringify(doc);
 function pushUndo(prev){undo.push(prev||snap());if(undo.length>150)undo.shift();redo=[]}
-function restore(str){const w=W,h=H;doc=JSON.parse(str);syncSize();sel=sel.filter(byId);if(ep){const s=byId(ep.id);if(s&&s.type==='path'){ep.cs=parsePD(s.pd);ep.si=null}else ep=null}if(w!==W||h!==H)fit();refresh()}
+function restore(str){const w=W,h=H;doc=JSON.parse(str);syncSize();sel=sel.filter(byId);if(ep){const s=byId(ep.id);if(s&&s.type==='path'){ep.cs=parsePD(s.pd);ep.si=null;ep.sel=[];epClassify()}else ep=null}if(w!==W||h!==H)fit();refresh()}
 function doUndo(){if(sb){if(sb.hist.length){sb.regions=sb.hist.pop();renderAfterSel()}return}if(!undo.length)return;redo.push(snap());restore(undo.pop())}
 function doRedo(){if(sb)return;if(!redo.length)return;undo.push(snap());restore(redo.pop())}
 
@@ -546,6 +558,7 @@ function bgImgSVG(exp){
   return `<image href="${d}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="${par}" opacity="${b.op??1}" clip-path="url(#artclip)" pointer-events="none"/>`;
 }
 function shapesSVG(){
+  if(ep)return doc.shapes.map(s=>s.id===ep.id?shapeSVG(s):`<g opacity=".38" style="filter:grayscale(1)">${shapeSVG(s)}</g>`).join('');
   if(!sb)return doc.shapes.map(s=>shapeSVG(s)).join('');
   let o='',done=false;
   for(const s of doc.shapes){if(sb.ids.has(s.id)){if(!done){o+=sbRegionsSVG();done=true}continue}o+=shapeSVG(s)}
@@ -649,13 +662,16 @@ cv.addEventListener('pointerdown',e=>{
   if(ep){
     const s=byId(ep.id),nEl=e.target.closest('[data-n],[data-hd],[data-mid]');
     if(nEl){
-      if(nEl.dataset.n){const[c,i]=nEl.dataset.n.split(',').map(Number);ep.si=[c,i];drag={mode:'node',prev,s,c,i};}
+      if(nEl.dataset.n){const[c,i]=nEl.dataset.n.split(',').map(Number),add=ep.multi||e.shiftKey,was=epIsSel(c,i);
+        if(add){if(!was)ep.sel.push([c,i])}else if(!was)ep.sel=[[c,i]];
+        ep.si=[c,i];drag={mode:'node',prev,s,c,i,toggle:add&&was,sx:e.clientX,sy:e.clientY};}
       else if(nEl.dataset.hd){const[c,i,side]=nEl.dataset.hd.split(',');drag={mode:'hd',prev,s,c:+c,i:+i,side};}
-      else{const[c,k]=nEl.dataset.mid.split(',').map(Number);pushUndo();const[ci,ni]=insertPoint(c,k);s.pd=pdOf(ep.cs);ep.si=[ci,ni];drag={mode:'node',prev:null,s,c:ci,i:ni,changed:true}}
+      else{const[c,k]=nEl.dataset.mid.split(',').map(Number);pushUndo();const[ci,ni]=insertPoint(c,k);s.pd=pdOf(ep.cs);ep.si=[ci,ni];ep.sel=[[ci,ni]];drag={mode:'node',prev:null,s,c:ci,i:ni,changed:true}}
       renderAfterSel();return;
     }
     // with a point selected, a drag anywhere moves that point by the same amount (finger never has to cover it)
-    if(ep.si&&ep.cs[ep.si[0]]?.[ep.si[1]]){const n=ep.cs[ep.si[0]][ep.si[1]];
+    if(ep.sel.length&&(!ep.si||!epIsSel(...ep.si)))ep.si=ep.sel[ep.sel.length-1];
+    if(ep.si&&epIsSel(...ep.si)&&ep.cs[ep.si[0]]?.[ep.si[1]]){const n=ep.cs[ep.si[0]][ep.si[1]];
       drag={mode:'node',prev,s,c:ep.si[0],i:ep.si[1],rel:true,P0:P,w0:worldOf(s,n.x,n.y),sx:e.clientX,sy:e.clientY,tapId:sEl?sEl.dataset.id:null};return}
     if(!sEl||sEl.dataset.id!==ep.id){ if(!sEl){drag=null;renderAfterSel();return} ep=null; }
   }
@@ -713,17 +729,23 @@ cv.addEventListener('pointermove',e=>{
   }
   if(drag.mode==='node'||drag.mode==='hd'){
     const s=drag.s,n=ep&&ep.cs[drag.c]?.[drag.i];if(!n)return;
-    if(drag.rel&&!drag.changed&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<3)return;
+    if((drag.rel||drag.toggle)&&!drag.changed&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<3)return;
+    const grp=drag.mode==='node'?[...new Set([n,...epSelNodes().map(x=>x.n)])]:[n];
     let Q=drag.rel?{x:drag.w0.x+P.x-drag.P0.x,y:drag.w0.y+P.y-drag.P0.y}:{x:P.x,y:P.y};guides={x:null,y:null};
     if(drag.mode==='node'&&snapOn){
       const tx=snapTargets('x',[s.id]),ty=snapTargets('y',[s.id]);
-      ep.cs.forEach(c=>c.forEach(m=>{if(m!==n){const w=worldOf(s,m.x,m.y);tx.push(w.x);ty.push(w.y)}}));
+      ep.cs.forEach(c=>c.forEach(m=>{if(!grp.includes(m)){const w=worldOf(s,m.x,m.y);tx.push(w.x);ty.push(w.y)}}));
       const[ax,gx]=bestSnap([Q.x],tx),[ay,gy]=bestSnap([Q.y],ty);if(ax!=null){Q.x+=ax;guides.x=gx}if(ay!=null){Q.y+=ay;guides.y=gy}
     }
     const U=unitOf(s,Q);
-    if(drag.mode==='node'){const dx=U.u-n.x,dy=U.v-n.y;for(const k of['x','ix','ox'])n[k]+=dx;for(const k of['y','iy','oy'])n[k]+=dy}
+    if(drag.mode==='node'){const dx=U.u-n.x,dy=U.v-n.y;grp.forEach(m=>{for(const k of['x','ix','ox'])m[k]+=dx;for(const k of['y','iy','oy'])m[k]+=dy})}
     else{const o=drag.side==='i'?'o':'i';n[drag.side+'x']=U.u;n[drag.side+'y']=U.v;
-      if(n.sm&&!e.altKey){const vx=U.u-n.x,vy=U.v-n.y,L=Math.hypot(vx,vy),Lo=Math.hypot(n[o+'x']-n.x,n[o+'y']-n.y)||L;if(L>1e-6){n[o+'x']=n.x-vx/L*Lo;n[o+'y']=n.y-vy/L*Lo}}}
+      if(e.altKey&&n.t!=='free')n.t='free';
+      if(n.t==='sym'||n.t==='asym'){
+        // mirror the other handle at the shape's real proportions so curves stay even
+        const sx=Math.abs(s.w)||1,sy=Math.abs(s.h)||1,vx=(U.u-n.x)*sx,vy=(U.v-n.y)*sy,L=Math.hypot(vx,vy);
+        const Lo=n.t==='sym'?L:Math.hypot((n[o+'x']-n.x)*sx,(n[o+'y']-n.y)*sy)||L;
+        if(L>1e-6){n[o+'x']=n.x-vx/L*Lo/sx;n[o+'y']=n.y-vy/L*Lo/sy}}}
     s.pd=pdOf(ep.cs);drag.changed=true;renderCanvas();return;
   }
   if(drag.mode==='gresize'){
@@ -801,9 +823,13 @@ function endPtr(e){
   if(drag.mode==='sb'){drag=null;sbApply();renderAfterSel();return}
   if(drag.mode==='guide'){const g=drag.g,L=g.axis==='v'?W:H;guideDrag=null;if(g.pos<-L*.03||g.pos>L*1.03){doc.guides=doc.guides.filter(x=>x!==g);toast('Guide removed')}}
   if((drag.mode==='node'||drag.mode==='hd')&&drag.changed&&ep){normalisePts(drag.s,ep.cs)}
+  if(drag.mode==='node'&&drag.toggle&&!drag.changed&&ep){
+    // tapping a point that was already picked (while selecting several) lets go of it
+    ep.sel=ep.sel.filter(([a,b])=>!(a===drag.c&&b===drag.i));ep.si=ep.sel[ep.sel.length-1]||null;
+  }
   if(drag.mode==='node'&&drag.rel&&!drag.changed&&ep){
-    // a plain tap: empty space deselects the point, another shape leaves point editing and selects it
-    if(!drag.tapId)ep.si=null;else if(drag.tapId!==ep.id){ep=null;sel=expand([drag.tapId])}
+    // a plain tap: empty space lets go of the points, another shape leaves point editing and selects it
+    if(!drag.tapId){if(!ep.multi){ep.sel=[];ep.si=null}}else if(drag.tapId!==ep.id){ep=null;sel=expand([drag.tapId])}
   }
   if(drag.changed&&drag.prev){pushUndo(drag.prev)}
   if(drag.mode==='move'&&!drag.changed&&drag.remote){sel=[];inG=null}
@@ -883,20 +909,48 @@ function normalisePts(s,cs){
 function enterEdit(id){
   const s=byId(id);if(!s||s.type==='text'||s.locked)return;
   pushUndo();if(s.type!=='path'){s.name=shapeN(s);s.pd=shapeD(s);s.type='path'}
-  ep={id,cs:parsePD(s.pd),si:null};sel=[id];openTab('arrange');refresh();
+  ep={id,cs:parsePD(s.pd),si:null,sel:[],multi:false};epClassify();sel=[id];openTab('arrange');refresh();
   toast('Editing points — drag them, or tap a small dot to add one');
 }
 function exitEdit(){if(!ep)return;ep=null;refresh()}
-function epCheck(){if(ep){const s=byId(ep.id);if(!s||s.type!=='path'||sel.length!==1||sel[0]!==ep.id)ep=null}const b=$('epDone');b.hidden=!ep&&!sb;b.textContent=sb?'Done building':'Done editing points'}
+// several points can be selected; ep.si is the one last touched (its handles show)
+const epIsSel=(c,i)=>ep.sel.some(([a,b])=>a===c&&b===i);
+const epSelNodes=()=>ep.sel.filter(([c,i])=>ep.cs[c]&&ep.cs[c][i]).map(([c,i])=>({c,i,n:ep.cs[c][i]}));
+function epClassify(){
+  // work out each point's type from its handles, measured at the shape's real proportions
+  const s=byId(ep.id),sx=Math.abs(s.w)||1,sy=Math.abs(s.h)||1;
+  ep.cs.forEach(c=>c.forEach(n=>{
+    const ix=(n.ix-n.x)*sx,iy=(n.iy-n.y)*sy,ox=(n.ox-n.x)*sx,oy=(n.oy-n.y)*sy,li=Math.hypot(ix,iy),lo=Math.hypot(ox,oy);
+    if(li<1e-3&&lo<1e-3)n.t='corner';
+    else if(li<1e-3||lo<1e-3)n.t='free';
+    else{const cr=Math.abs(ix*oy-iy*ox)/(li*lo),dot=ix*ox+iy*oy;
+      n.t=cr<.03&&dot<0?(Math.abs(li-lo)/Math.max(li,lo)<.03?'sym':'asym'):'free'}
+  }));
+}
+function setNodeType(ci,i,t){
+  const s=byId(ep.id),sx=Math.abs(s.w)||1,sy=Math.abs(s.h)||1,c=ep.cs[ci],n=c[i],a=c[(i-1+c.length)%c.length],b=c[(i+1)%c.length];
+  const V=(px,py)=>[(px-n.x)*sx,(py-n.y)*sy],hasI=Math.hypot(...V(n.ix,n.iy))>1e-3,hasO=Math.hypot(...V(n.ox,n.oy))>1e-3;
+  if(t==='corner'){n.ix=n.ox=n.x;n.iy=n.oy=n.y}
+  else if(t==='free'){if(!hasI){n.ix=n.x+(a.x-n.x)/3;n.iy=n.y+(a.y-n.y)/3}if(!hasO){n.ox=n.x+(b.x-n.x)/3;n.oy=n.y+(b.y-n.y)/3}}
+  else{
+    let[dx,dy]=hasI||hasO?[(hasO?V(n.ox,n.oy)[0]:0)-(hasI?V(n.ix,n.iy)[0]:0),(hasO?V(n.ox,n.oy)[1]:0)-(hasI?V(n.ix,n.iy)[1]:0)]:[(b.x-a.x)*sx,(b.y-a.y)*sy];
+    const L=Math.hypot(dx,dy)||1;dx/=L;dy/=L;
+    let li=hasI?Math.hypot(...V(n.ix,n.iy)):Math.hypot((n.x-a.x)*sx,(n.y-a.y)*sy)/3,lo=hasO?Math.hypot(...V(n.ox,n.oy)):Math.hypot((b.x-n.x)*sx,(b.y-n.y)*sy)/3;
+    if(t==='sym'){const m=(li+lo)/2;li=lo=m}
+    n.ix=n.x-dx*li/sx;n.iy=n.y-dy*li/sy;n.ox=n.x+dx*lo/sx;n.oy=n.y+dy*lo/sy;
+  }
+  n.t=t;
+}
+function epCheck(){if(ep){const s=byId(ep.id);if(!s||s.type!=='path'||sel.length!==1||sel[0]!==ep.id)ep=null}const b=$('epDone');b.hidden=!ep&&!sb;b.textContent=sb?'Done building':ep&&ep.multi?'Done selecting points':'Done editing points'}
 function epOverlay(k,A){
   const s=byId(ep.id);let o=`<g transform="translate(${s.x} ${s.y}) rotate(${s.r}) scale(${s.fx} ${s.fy})" pointer-events="none"><path d="${scaleD(s.pd,s.w,s.h)}" fill="none" stroke="${A}" stroke-width="${1.3*k}" fill-rule="evenodd"/></g>`;
   const W_=(u,v)=>worldOf(s,u,v);
   ep.cs.forEach((c,ci)=>c.forEach((b,i)=>{const a=c[(i-1+c.length)%c.length];const pa=W_(a.x,a.y),pb=W_(b.x,b.y);
     if(Math.hypot(pa.x-pb.x,pa.y-pb.y)*view.s>36){const[mx,my]=bez(a,b,.5),m=W_(mx,my);
       o+=`<circle cx="${m.x}" cy="${m.y}" r="${4.5*k}" fill="#fff" stroke="${A}" stroke-width="${1.5*k}" opacity=".85" pointer-events="none"/><circle cx="${m.x}" cy="${m.y}" r="${12*k}" fill="transparent" data-mid="${ci},${i===0?c.length:i}"/>`}}));
-  ep.cs.forEach((c,ci)=>c.forEach((n,i)=>{const p=W_(n.x,n.y),on=ep.si&&ep.si[0]===ci&&ep.si[1]===i,z=(on?13:11)*k;
-    o+=`<rect x="${p.x-z/2}" y="${p.y-z/2}" width="${z}" height="${z}" rx="${n.sm?z/2:2*k}" fill="${on?A:'#fff'}" stroke="${A}" stroke-width="${2*k}" pointer-events="none"/><circle cx="${p.x}" cy="${p.y}" r="${18*k}" fill="transparent" data-n="${ci},${i}"/>`}));
-  if(ep.si){const n=ep.cs[ep.si[0]]?.[ep.si[1]];if(n){const p=W_(n.x,n.y);
+  ep.cs.forEach((c,ci)=>c.forEach((n,i)=>{const p=W_(n.x,n.y),on=epIsSel(ci,i),z=(on?13:11)*k;
+    o+=`<rect x="${p.x-z/2}" y="${p.y-z/2}" width="${z}" height="${z}" rx="${n.t==='corner'?2*k:z/2}" fill="${on?A:'#fff'}" stroke="${A}" stroke-width="${2*k}" pointer-events="none"/><circle cx="${p.x}" cy="${p.y}" r="${18*k}" fill="transparent" data-n="${ci},${i}"/>`}));
+  if(ep.si&&epIsSel(...ep.si)){const n=ep.cs[ep.si[0]]?.[ep.si[1]];if(n){const p=W_(n.x,n.y);
     for(const[side,hx,hy]of[['i',n.ix,n.iy],['o',n.ox,n.oy]]){if(Math.abs(hx-n.x)<1e-6&&Math.abs(hy-n.y)<1e-6)continue;const h=W_(hx,hy);
       o+=`<line x1="${p.x}" y1="${p.y}" x2="${h.x}" y2="${h.y}" stroke="${A}" stroke-width="${1.2*k}" pointer-events="none"/><circle cx="${h.x}" cy="${h.y}" r="${6*k}" fill="#fff" stroke="${A}" stroke-width="${2*k}" pointer-events="none"/><circle cx="${h.x}" cy="${h.y}" r="${16*k}" fill="transparent" data-hd="${ep.si[0]},${ep.si[1]},${side}"/>`}}}
   return o;
@@ -906,9 +960,9 @@ function insertPoint(ci,k){
   const st=a.ox===a.x&&a.oy===a.y&&b.ix===b.x&&b.iy===b.y;
   const L=(p,q,t)=>[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t];
   let n;
-  if(st){const m=L([a.x,a.y],[b.x,b.y],.5);n={x:m[0],y:m[1],ix:m[0],iy:m[1],ox:m[0],oy:m[1],sm:false}}
+  if(st){const m=L([a.x,a.y],[b.x,b.y],.5);n={x:m[0],y:m[1],ix:m[0],iy:m[1],ox:m[0],oy:m[1],sm:false,t:'corner'}}
   else{const p0=[a.x,a.y],p1=[a.ox,a.oy],p2=[b.ix,b.iy],p3=[b.x,b.y],q0=L(p0,p1,.5),q1=L(p1,p2,.5),q2=L(p2,p3,.5),r0=L(q0,q1,.5),r1=L(q1,q2,.5),m=L(r0,r1,.5);
-    a.ox=q0[0];a.oy=q0[1];b.ix=q2[0];b.iy=q2[1];n={x:m[0],y:m[1],ix:r0[0],iy:r0[1],ox:r1[0],oy:r1[1],sm:true}}
+    a.ox=q0[0];a.oy=q0[1];b.ix=q2[0];b.iy=q2[1];n={x:m[0],y:m[1],ix:r0[0],iy:r0[1],ox:r1[0],oy:r1[1],sm:true,t:'asym'}}
   c.splice(k,0,n);return[ci,k];
 }
 
@@ -1120,9 +1174,20 @@ function act(name,arg){
     case'ungroup':{const gs=new Set(ss.map(s=>s.g).filter(Boolean));if(!gs.size)return;pushUndo();doc.shapes.forEach(s=>{if(gs.has(s.g))delete s.g});inG=null;toast('Ungrouped');break}
     case'editpts':enterEdit(sel[0]);return;
     case'epdone':exitEdit();return;
+    case'eptype':{if(!ep||!ep.sel.length)return;pushUndo();epSelNodes().forEach(({c,i})=>setNodeType(c,i,arg));normalisePts(byId(ep.id),ep.cs);
+      toast({corner:'Sharp corner',sym:'Symmetric curve',asym:'Asymmetric curve',free:'Disconnected handles'}[arg]);break}
+    case'epall':if(!ep)return;ep.sel=ep.cs.flatMap((c,ci)=>c.map((n,i)=>[ci,i]));ep.si=ep.sel[ep.sel.length-1];break;
+    case'epmulti':if(!ep)return;ep.multi=!ep.multi;if(ep.multi)toast('Tap points to add them to the selection');break;
+    case'epadd':{if(!ep)return;if(!ep.si||!epIsSel(...ep.si))return toast('Tap a point first. The new point goes after it');
+      pushUndo();const s=byId(ep.id),[ci,i]=ep.si,[c2,k2]=insertPoint(ci,i+1);ep.sel=[[c2,k2]];ep.si=[c2,k2];s.pd=pdOf(ep.cs);toast('Point added');break}
+    case'eprem':{if(!ep||!ep.sel.length)return;const byC={};ep.sel.forEach(([c,i])=>(byC[c]=byC[c]||[]).push(i));
+      let gone=0,kept=0;const plan=Object.entries(byC).map(([c,is])=>{const C=ep.cs[c],can=Math.max(0,C.length-3),del=is.sort((a,b)=>b-a).slice(0,can);kept+=is.length-del.length;gone+=del.length;return[C,del]});
+      if(!gone){toast('A shape needs at least 3 points');return}
+      pushUndo();plan.forEach(([C,del])=>del.forEach(i=>C.splice(i,1)));ep.sel=[];ep.si=null;normalisePts(byId(ep.id),ep.cs);
+      toast(kept?`Removed ${gone}; kept ${kept} so the shape keeps 3 points`:gone>1?`Removed ${gone} points`:'Point removed');break}
     case'epdel':case'epcorner':case'epsmooth':{if(!ep||!ep.si)return;const s=byId(ep.id),c=ep.cs[ep.si[0]],i=ep.si[1],n=c[i];
-      if(name==='epdel'){if(c.length<=3){toast('A shape needs at least 3 points');return}pushUndo();c.splice(i,1);ep.si=null}
-      else if(name==='epcorner'){pushUndo();n.ix=n.ox=n.x;n.iy=n.oy=n.y;n.sm=false}
+      if(name==='epdel'){if(c.length<=3){toast('A shape needs at least 3 points');return}pushUndo();c.splice(i,1);ep.si=null;ep.sel=[]}
+      else if(name==='epcorner'){pushUndo();n.ix=n.ox=n.x;n.iy=n.oy=n.y;n.sm=false;n.t='corner'}
       else{pushUndo();const a=c[(i-1+c.length)%c.length],b=c[(i+1)%c.length];let dx=b.x-a.x,dy=b.y-a.y;const L=Math.hypot(dx,dy)||1;dx/=L;dy/=L;
         const li=Math.hypot(n.x-a.x,n.y-a.y)/3,lo=Math.hypot(b.x-n.x,b.y-n.y)/3;n.ix=n.x-dx*li;n.iy=n.y-dy*li;n.ox=n.x+dx*lo;n.oy=n.y+dy*lo;n.sm=true}
       normalisePts(s,ep.cs);break}
@@ -1203,13 +1268,15 @@ function pStyle(){
   return h;
 }
 function pEdit(){
-  const s=byId(ep.id),n=ep.si&&ep.cs[ep.si[0]]?.[ep.si[1]],c=ep.si&&ep.cs[ep.si[0]];
+  const s=byId(ep.id),ns=epSelNodes(),cnt=ep.cs.reduce((t,c)=>t+c.length,0),types=new Set(ns.map(x=>x.n.t)),cur=types.size===1?[...types][0]:null;
   const B=(a,ic,l,dis,on)=>`<button data-act="${a}" ${dis?'disabled':''} ${on!=null?`aria-pressed="${on}"`:''}>${ic?IC[ic]:''}<span>${l}</span></button>`;
-  const cnt=ep.cs.reduce((t,c)=>t+c.length,0);
+  const T=(t,ic,l)=>`<button class="ptype" data-act="eptype" data-arg="${t}" ${ns.length?'':'disabled'} aria-pressed="${cur===t}">${IC[ic]}<span>${l}</span></button>`;
+  const msg=!ns.length?`${cnt} points. Tap a point to select it, then drag anywhere on the screen to move it. Tap a small dot between two points to add one there.`
+    :`${ns.length===cnt?'All':ns.length} of ${cnt} points selected. Drag anywhere to move ${ns.length>1?'them together':'it'}.${ep.multi?' Tap more points to add them; tap a picked point to drop it.':''}`;
   return `<div class="sec"><h3>Editing points · ${esc(shapeN(s))}</h3>
-    <p class="note">${cnt} points. Tap a point to select it, then drag anywhere on the screen to move it, so your finger never covers it. Tap empty space to let go of the point. Tap a small dot between two points to add a new one there.</p>
-    <div class="btns">${B('epcorner','','Corner',!n,n?!n.sm&&n.ix===n.x&&n.ox===n.x&&n.iy===n.y&&n.oy===n.y:null)}${B('epsmooth','','Smooth curve',!n,n?n.sm:null)}${B('epdel','del','Delete point',!n||c.length<=3)}</div>
-    ${n?'<p class="note">Handles on a smooth point move together. Hold Alt while dragging one to break them apart.</p>':''}
+    <div class="ptypes" role="group" aria-label="Point type">${T('corner','ptCorner','Corner')}${T('sym','ptSym','Symmetric')}${T('asym','ptAsym','Asymmetric')}${T('free','ptFree','Disconnected')}</div>
+    <div class="btns">${B('epmulti','multi','Select several',false,ep.multi)}${B('epall','ptAll','Select all',ns.length===cnt)}${B('epadd','plus','Add point',!(ep.si&&epIsSel(...ep.si)))}${B('eprem','minus','Remove',!ns.length)}</div>
+    <p class="note">${msg}</p>
     <div class="btns"><button class="pbtn" data-act="epdone">Done</button></div></div>`;
 }
 function pArrange(){
@@ -1386,7 +1453,7 @@ $('bgfile').addEventListener('change',e=>{const f=e.target.files[0];e.target.val
     sel=[];styleT='bg';openTab('style');refresh();toast('Background image added');
   };
   img.onerror=()=>{URL.revokeObjectURL(url);toast('That file could not be opened as an image')};img.src=url;});
-$('epDone').onclick=()=>sb?sbFinish(true):exitEdit();
+$('epDone').onclick=()=>{if(sb)return sbFinish(true);if(ep&&ep.multi){ep.multi=false;renderAfterSel();return}exitEdit()};
 {const Q={'order:fwd':IC.qup,'order:bwd':IC.qdown,'flip:h':IC.fh,'flip:v':IC.fv,'dup:':IC.dup,'rot90:':IC.rot90,'sbstart:':IC.bbuild};
  document.querySelectorAll('#qbar [data-qa]').forEach(b=>b.innerHTML=Q[b.dataset.qa+':'+(b.dataset.arg||'')]||'');
  const setQ=()=>{$('qbar').classList.toggle('closed',!qOpen);const t=$('qtoggle');t.innerHTML=IC.wrench;t.setAttribute('aria-expanded',qOpen);t.setAttribute('aria-label',qOpen?'Hide quick tools':'Show quick tools')};
@@ -1450,7 +1517,7 @@ addEventListener('keydown',e=>{
   if(mod&&k==='d'){e.preventDefault();act('dup');return}
   if(mod&&k==='a'){e.preventDefault();act('selall');return}
   if(k==='alt'&&sb){sb.mode=sb.mode==='merge'?'erase':'merge';renderPanel();return}
-  if(k==='delete'||k==='backspace'){if(sb)return;e.preventDefault();act(ep&&ep.si?'epdel':'del');return}
+  if(k==='delete'||k==='backspace'){if(sb)return;e.preventDefault();act(ep?(ep.sel.length?'eprem':''):'del');return}
   if(!$('lib').hidden){if(k==='escape'){sheetEl?closeSheet():closeLib()}return}
   if(k==='escape'){if(sb)return sbFinish(false);if(ep)return exitEdit();sel=[];inG=null;refresh();return}
   if(e.shiftKey&&!mod&&k==='m'){e.preventDefault();sb?sbFinish(true):act('sbstart');return}
@@ -1458,6 +1525,9 @@ addEventListener('keydown',e=>{
   if(mod&&k==='g'){e.preventDefault();act(e.shiftKey?'ungroup':'group');return}
   if(k==='0'&&mod){e.preventDefault();fit();return}
   const ar={arrowleft:[-1,0],arrowright:[1,0],arrowup:[0,-1],arrowdown:[0,1]}[k];
+  if(ar&&ep&&ep.sel.length){e.preventDefault();pushUndo();const s=byId(ep.id),st=e.shiftKey?10:1;
+    epSelNodes().forEach(({n})=>{const a=worldOf(s,n.x,n.y),u=unitOf(s,{x:a.x+ar[0]*st,y:a.y+ar[1]*st}),dx=u.u-n.x,dy=u.v-n.y;for(const k of['x','ix','ox'])n[k]+=dx;for(const k of['y','iy','oy'])n[k]+=dy});
+    normalisePts(s,ep.cs);refresh();return}
   if(ar&&sel.length){e.preventDefault();pushUndo();const st=e.shiftKey?10:1;selShapes().forEach(s=>{s.x+=ar[0]*st;s.y+=ar[1]*st});refresh()}
 });
 addEventListener('keyup',e=>{if(e.key===' ')spaceDown=false});
