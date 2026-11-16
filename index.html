@@ -64,14 +64,23 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 /* stage */
 .stage{grid-area:stage;position:relative;overflow:hidden;background:var(--bg)}
 #cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
-.zoom{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:12px;font-family:var(--f-mono);font-size:12px;padding:6px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--muted)}
+.zoom{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:12px;font-family:var(--f-mono);font-size:12px;padding:6px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--muted)}
 .eptag{position:absolute;top:12px;left:50%;transform:translateX(-50%);box-shadow:0 4px 14px rgba(0,0,0,.18);z-index:5}
-.fbar{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:2px;padding:4px;border-radius:14px;background:var(--panel);border:1px solid var(--line);box-shadow:0 6px 18px rgba(10,20,30,.14);z-index:4}
-.fbar button{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;font-size:14px;font-weight:500}
-.fbar button:hover{background:var(--sunk)}
-.fbar button:active{background:var(--accent-soft);color:var(--accent)}
-.fbar svg{width:20px;height:20px}
-.hint{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:12px;font-size:12px;color:var(--muted);max-width:60%}
+.qbar{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:12px;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:4;max-height:calc(100% - 24px);pointer-events:none}
+.qitems{display:flex;flex-direction:column;align-items:center;gap:8px;overflow:auto;scrollbar-width:none;padding:4px;margin:-4px;pointer-events:auto}
+.qitems::-webkit-scrollbar{display:none}
+.qitems>button,.qpair button,.qtoggle{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--panel);color:var(--accent);border:1px solid var(--line);box-shadow:0 3px 10px rgba(10,20,30,.13);flex:0 0 auto;transition:transform .12s}
+.qitems>button:active,.qpair button:active,.qtoggle:active{transform:scale(.9)}
+.qitems svg,.qtoggle svg{width:22px;height:22px}
+.qpair{display:flex;flex-direction:column;border-radius:23px;background:var(--panel);border:1px solid var(--line);box-shadow:0 3px 10px rgba(10,20,30,.13);overflow:hidden}
+.qpair button{border:0;box-shadow:none;border-radius:0;height:42px}
+.qpair button+button{border-top:1px solid var(--line)}
+.qtoggle{pointer-events:auto;background:var(--ink);color:var(--panel);border-color:var(--ink);width:50px;height:50px}
+.qbar.closed .qitems{display:none}
+.qbar.closed .qtoggle{background:var(--panel);color:var(--ink);border-color:var(--line)}
+@media (prefers-reduced-motion:no-preference){.qitems>*{animation:qin .18s ease-out backwards}.qitems>*:nth-last-child(2){animation-delay:.03s}.qitems>*:nth-last-child(3){animation-delay:.06s}.qitems>*:nth-last-child(4){animation-delay:.09s}.qitems>*:nth-last-child(5){animation-delay:.12s}.qitems>*:nth-last-child(6){animation-delay:.15s}}
+@keyframes qin{from{opacity:0;transform:translateY(10px) scale(.85)}}
+.hint{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:52px;font-size:12px;color:var(--muted);max-width:60%}
 .artshadow{filter:drop-shadow(0 2px 10px rgba(20,30,40,.14))}
 
 /* panel */
@@ -238,10 +247,16 @@ select.tin{padding:8px 10px}
       <g id="world"></g>
     </svg>
     <div class="hint" id="hint">With a shape selected, drag anywhere to move it · tap empty space to deselect · two fingers to pan and zoom</div>
-    <div class="fbar" id="fbar" hidden>
-      <button data-qa="flip" data-arg="h" title="Mirror left to right (Shift+H)" aria-label="Mirror left to right"></button>
-      <button data-qa="flip" data-arg="v" title="Flip top to bottom (Shift+V)" aria-label="Flip top to bottom"></button>
-      <button data-qa="sbstart" title="Shape builder (Shift+M)" aria-label="Shape builder"></button>
+    <div class="qbar" id="qbar" hidden>
+      <div class="qitems" id="qitems">
+        <div class="qpair"><button data-qa="order" data-arg="fwd" title="Bring forward" aria-label="Bring forward"></button><button data-qa="order" data-arg="bwd" title="Send backward" aria-label="Send backward"></button></div>
+        <button data-qa="flip" data-arg="h" title="Mirror left to right (Shift+H)" aria-label="Mirror left to right"></button>
+        <button data-qa="flip" data-arg="v" title="Flip top to bottom (Shift+V)" aria-label="Flip top to bottom"></button>
+        <button data-qa="dup" title="Duplicate" aria-label="Duplicate"></button>
+        <button data-qa="rot90" title="Rotate 90° clockwise" aria-label="Rotate 90 degrees clockwise"></button>
+        <button data-qa="sbstart" id="qBuild" title="Shape builder (Shift+M)" aria-label="Shape builder"></button>
+      </div>
+      <button class="qtoggle" id="qtoggle" aria-expanded="true" aria-controls="qitems" aria-label="Hide quick tools" title="Quick tools"></button>
     </div>
     <button class="zoom" id="zoom" title="Fit to screen">100%</button>
     <button class="eptag pbtn" id="epDone" hidden>Done editing points</button>
@@ -336,6 +351,10 @@ const IC={
  plus:I('<path d="M12 5v14M5 12h14"/>'), more:I('<circle cx="5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="12" r="1.3" fill="currentColor"/>'),
  back:I('<path d="M15 5l-7 7 7 7"/>'), close:I('<path d="M6 6l12 12M18 6 6 18"/>'), grid4:I('<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>'),
  save:I('<path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 19h14"/>'), upload:I('<path d="M12 15V4M7 9l5-5 5 5"/><path d="M5 19h14"/>'), pencil:I('<path d="M4 20h4L19 9l-4-4L4 16z"/>'),
+ qup:I('<path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 19h14" stroke-dasharray="2.5 2.5"/>'),
+ qdown:I('<path d="M5 5h14" stroke-dasharray="2.5 2.5"/><path d="M12 9v11M8 16l4 4 4-4"/>'),
+ rot90:I('<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/>'),
+ wrench:I('<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3-6.5-6.5a4 4 0 0 1 5-5L10 7.8z" stroke-opacity="0"/><path d="M15 4.2a4.5 4.5 0 0 0-5.6 5.9L3.6 15.9a1.9 1.9 0 0 0 2.7 2.7l5.8-5.8a4.5 4.5 0 0 0 5.9-5.6l-2.6 2.6-2.4-.6-.6-2.4z"/>'),
  bsplit:I('<path d="M4 4h7v7H4zM13 13h7v7h-7z" fill="currentColor" fill-opacity=".3"/><path d="M14 4l6 6M20 4l-6 6" stroke-opacity=".5"/>'),
  ratio:I('<rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M8 10h3M13 14h3"/>'),
  file:I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>'), fit:I('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
@@ -402,6 +421,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s1',type:'ellipse',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#e0d1bb',stroke:'none',sw:0,op:1},
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
+let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -543,7 +563,7 @@ function renderTop(){
   $('bUndo').disabled=sb?!sb.hist.length:!undo.length;$('bRedo').disabled=!!sb||!redo.length;
   $('bDup').disabled=$('bDel').disabled=!sel.length||!!sb;
   $('bSnap').setAttribute('aria-pressed',snapOn);$('bMulti').setAttribute('aria-pressed',multi);
-  const fb=$('fbar'),show=sel.length>0&&!ep&&!sb&&selShapes().some(s=>!s.locked);fb.hidden=!show;fb.children[2].hidden=selShapes().filter(s=>s.type!=='text').length<2;if(show)$('hint')?.remove();
+  const qb=$('qbar'),show=sel.length>0&&!ep&&!sb&&selShapes().some(s=>!s.locked);qb.hidden=!show;$('qBuild').hidden=selShapes().filter(s=>s.type!=='text').length<2;if(show)$('hint')?.remove();
 }
 function refresh(){syncSize();renderCanvas();renderPanel();renderTop();save()}
 
@@ -1066,6 +1086,8 @@ function act(name,arg){
     case'keyfirst':keyId=sel[0];alignTo='key';break;
     case'keylast':keyId=sel[sel.length-1];alignTo='key';break;
     case'swap':{if(ss.length!==2)return;pushUndo();const[a,b]=ss;[a.x,b.x]=[b.x,a.x];[a.y,b.y]=[b.y,a.y];toast('Swapped positions');break}
+    case'rot90':{const rs=ss.filter(s=>!s.locked);if(!rs.length)return;pushUndo();const b=union(rs),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;
+      rs.forEach(s=>{const p=rot(s.x-cx,s.y-cy,90);s.x=cx+p.x;s.y=cy+p.y;s.r=((s.r+90+180)%360+360)%360-180});break}
     case'flip':{const fl=ss.filter(s=>!s.locked);if(!fl.length)return;pushUndo();const b=union(fl),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;
       fl.forEach(s=>{if(arg==='h'){s.fx*=-1;s.x=2*cx-s.x}else{s.fy*=-1;s.y=2*cy-s.y}s.r=s.r?-s.r:0});
       toast(arg==='h'?'Mirrored left to right':'Flipped top to bottom');break}
@@ -1365,8 +1387,11 @@ $('bgfile').addEventListener('change',e=>{const f=e.target.files[0];e.target.val
   };
   img.onerror=()=>{URL.revokeObjectURL(url);toast('That file could not be opened as an image')};img.src=url;});
 $('epDone').onclick=()=>sb?sbFinish(true):exitEdit();
-{const fb=$('fbar').children;fb[0].innerHTML=IC.fh+'<span>Mirror</span>';fb[1].innerHTML=IC.fv+'<span>Flip</span>';fb[2].innerHTML=IC.bbuild+'<span>Builder</span>';
- $('fbar').addEventListener('click',e=>{const b=e.target.closest('[data-qa]');if(b)act(b.dataset.qa,b.dataset.arg)});}
+{const Q={'order:fwd':IC.qup,'order:bwd':IC.qdown,'flip:h':IC.fh,'flip:v':IC.fv,'dup:':IC.dup,'rot90:':IC.rot90,'sbstart:':IC.bbuild};
+ document.querySelectorAll('#qbar [data-qa]').forEach(b=>b.innerHTML=Q[b.dataset.qa+':'+(b.dataset.arg||'')]||'');
+ const setQ=()=>{$('qbar').classList.toggle('closed',!qOpen);const t=$('qtoggle');t.innerHTML=IC.wrench;t.setAttribute('aria-expanded',qOpen);t.setAttribute('aria-label',qOpen?'Hide quick tools':'Show quick tools')};
+ setQ();$('qtoggle').onclick=()=>{qOpen=!qOpen;try{localStorage.setItem('tessera.quick',qOpen?'1':'0')}catch(e){}setQ()};
+ $('qbar').addEventListener('click',e=>{const b=e.target.closest('[data-qa]');if(b)act(b.dataset.qa,b.dataset.arg)});}
 let menuEl=null;
 $('bMenu').onclick=e=>{e.stopPropagation();if(menuEl){menuEl.remove();menuEl=null;return}
   menuEl=document.createElement('div');menuEl.className='menu';menuEl.style.maxHeight='calc(100% - 70px)';menuEl.style.overflow='auto';
