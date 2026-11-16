@@ -445,7 +445,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='19';
+const APP_VERSION='20';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -914,8 +914,14 @@ function movePinch(){
   view.s=ns;view.tx=m.x-wx*ns;view.ty=m.y-wy*ns;view.auto=false;renderCanvas();
 }
 cv.addEventListener('wheel',e=>{e.preventDefault();
-  if(e.ctrlKey||e.metaKey)zoomAt(e.clientX,e.clientY,view.s*Math.exp(-e.deltaY*.01));
-  else{view.tx-=e.deltaX;view.ty-=e.deltaY;view.auto=false;renderCanvas()}},{passive:false});
+  // browsers report wheel movement in pixels, lines (Firefox) or pages; turn it all into pixels first
+  const u=e.deltaMode===1?16:e.deltaMode===2?400:1,dx=e.deltaX*u,dy=e.deltaY*u;
+  if(e.ctrlKey||e.metaKey){
+    // each mouse-wheel notch zooms a steady 10%; small trackpad pinch movements stay smooth
+    const steps=Math.abs(dy)>=40?Math.sign(dy):dy/40;
+    zoomAt(e.clientX,e.clientY,view.s*Math.pow(1.1,-steps));
+  }
+  else{view.tx-=dx;view.ty-=dy;view.auto=false;renderCanvas()}},{passive:false});
 function onDoubleTap(id){
   const s=byId(id);if(!s)return;
   if(s.g&&sel.length>1&&oneGroup()){inG=s.g;sel=[id];refresh();toast('Inside the group — double-tap again to edit points');return}
