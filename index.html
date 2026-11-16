@@ -184,6 +184,7 @@ select.tin{padding:8px 10px}
 .menu button{text-align:left;padding:11px 12px;border-radius:8px;font-size:15px;display:flex;gap:10px;align-items:center}
 .menu button:hover{background:var(--sunk)}
 .menu button svg{width:18px;height:18px;color:var(--muted)}
+.menu .mver{padding:8px 12px 4px;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
 .menu .mname{padding:8px 12px 6px;font-family:var(--f-display);font-weight:700;font-size:15px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .menu hr{border:0;border-top:1px solid var(--line);margin:4px 6px}
 .modal{position:fixed;inset:0;z-index:40;background:rgba(10,15,20,.5);display:grid;place-items:center;padding:16px}
@@ -441,6 +442,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
+const APP_VERSION='18';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -645,21 +647,23 @@ function groupBoxes(exclude){
 }
 function bgRect(){const b=doc.bgImg;if(!b||!b.show||!bgData[b.id]||b.fit!=='fit'||!b.iw)return null;
   const k=Math.min(W/b.iw,H/b.ih),w=b.iw*k,h=b.ih*k;return{l:(W-w)/2,r:(W+w)/2,t:(H-h)/2,b:(H+h)/2}}
-const isCircle=s=>s&&s.type==='ellipse'&&Math.abs(s.w-s.h)<Math.max(s.w,s.h)*.01;
+const isCircle=s=>s&&s.type==='ellipse'&&Math.abs(s.w-s.h)<Math.max(s.w,s.h)*.04;
+const radOf=s=>(s.w+s.h)/4;
 function polarSnap(st,rdx,rdy){
   const s=st.s;if(!isCircle(s))return null;
-  const cx=st.x+rdx,cy=st.y+rdy,rm=s.w/2,thr=8/view.s;let best=null;
+  // a little more forgiving than edge snapping, so a fingertip finds the ring easily
+  const cx=st.x+rdx,cy=st.y+rdy,rm=radOf(s),thr=13/view.s;let best=null;
   for(const o of doc.shapes){
     if(o===s||o.hidden||sel.includes(o.id))continue;
     const ox=o.x,oy=o.y,d=Math.hypot(cx-ox,cy-oy);if(d<1)continue;
     // rings the moving centre can sit on: its edge passes through the other centre, and for other circles
     // its centre on their edge, edges touching outside, or touching inside
     const rings=[[rm,'edge through centre']];
-    if(isCircle(o)){const ro=o.w/2;rings.push([ro,'centre on edge'],[rm+ro,'touching'],[Math.abs(rm-ro),'touching inside'])}
+    if(isCircle(o)){const ro=radOf(o);rings.push([ro,'centre on edge'],[rm+ro,'touching'],[Math.abs(rm-ro),'touching inside'])}
     for(const[R,why]of rings){if(R<1)continue;const err=Math.abs(d-R);if(err>=thr||(best&&err>=best.err))continue;
       let a=Math.atan2(cy-oy,cx-ox),deg=a*180/Math.PI,snapA=Math.round(deg/15)*15,ang=null;
       // lock to a 15° step when the ring point there is close to the finger
-      if(Math.abs(rad(snapA-deg))*R<thr*1.5){a=rad(snapA);ang=((snapA%360)+360)%360}
+      if(Math.abs(rad(snapA-deg))*R<thr*1.6){a=rad(snapA);ang=((snapA%360)+360)%360}
       best={err,R,ox,oy,a,ang,why}}
   }
   if(!best)return null;
@@ -1564,7 +1568,7 @@ $('epDone').onclick=()=>{if(sb)return sbFinish(true);if(ep&&ep.multi){ep.multi=f
 let menuEl=null;
 $('bMenu').onclick=e=>{e.stopPropagation();if(menuEl){menuEl.remove();menuEl=null;return}
   menuEl=document.createElement('div');menuEl.className='menu';menuEl.style.maxHeight='calc(100% - 70px)';menuEl.style.overflow='auto';
-  menuEl.innerHTML=`<div class="mname">${esc(curName)}</div><button data-m="lib">${IC.grid4}My designs</button><button data-m="newd">${IC.plus}New design</button><button data-m="dupd">${IC.dup}Save a copy</button><button data-m="ren">${IC.pencil}Rename or move</button><hr><button data-m="export">${IC.img}Export image &amp; SVG</button><button data-m="canvas">${IC.ratio}Canvas size</button><button data-m="bg">${IC.img}Background image</button><button data-m="fit">${IC.fit}Fit canvas to screen</button><hr><button data-m="new">${IC.del}Clear this canvas</button><button data-m="sample">${IC.spark}Load example</button>`;
+  menuEl.innerHTML=`<div class="mname">${esc(curName)}</div><button data-m="lib">${IC.grid4}My designs</button><button data-m="newd">${IC.plus}New design</button><button data-m="dupd">${IC.dup}Save a copy</button><button data-m="ren">${IC.pencil}Rename or move</button><hr><button data-m="export">${IC.img}Export image &amp; SVG</button><button data-m="canvas">${IC.ratio}Canvas size</button><button data-m="bg">${IC.img}Background image</button><button data-m="fit">${IC.fit}Fit canvas to screen</button><hr><button data-m="new">${IC.del}Clear this canvas</button><button data-m="sample">${IC.spark}Load example</button><div class="mver">Tessera version ${APP_VERSION}</div>`;
   document.body.appendChild(menuEl);
   menuEl.onclick=ev=>{const m=ev.target.closest('[data-m]')?.dataset.m;if(!m)return;menuEl.remove();menuEl=null;
     if(m==='fit')fit();
