@@ -48,6 +48,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 /* top bar */
 .top{grid-area:top;display:flex;align-items:center;gap:4px;padding-block:8px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line)}
 .brand{font-family:var(--f-display);font-weight:700;font-size:17px;letter-spacing:-.01em;margin:0 8px 0 4px;display:flex;align-items:center;gap:7px}
+.brand{border-radius:10px;padding:6px 8px;margin:0 2px}
+.brand:hover{background:var(--sunk)}
+.brand span{max-width:22vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .brand i{width:16px;height:16px;display:inline-block;background:conic-gradient(var(--accent) 0 25%,#c8553d 0 50%,#e9a03b 0 75%,#2f5bd3 0);border-radius:3px;transform:rotate(45deg) scale(.8)}
 .ib{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:var(--ink);position:relative}
 .ib svg{width:22px;height:22px}
@@ -163,6 +166,7 @@ select.tin{padding:8px 10px}
 .menu button{text-align:left;padding:11px 12px;border-radius:8px;font-size:15px;display:flex;gap:10px;align-items:center}
 .menu button:hover{background:var(--sunk)}
 .menu button svg{width:18px;height:18px;color:var(--muted)}
+.menu .mname{padding:8px 12px 6px;font-family:var(--f-display);font-weight:700;font-size:15px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .menu hr{border:0;border-top:1px solid var(--line);margin:4px 6px}
 .modal{position:fixed;inset:0;z-index:40;background:rgba(10,15,20,.5);display:grid;place-items:center;padding:16px}
 .mbox{background:var(--panel);border-radius:16px;padding:18px;width:min(520px,100%);max-height:90%;overflow:auto;display:grid;gap:12px}
@@ -170,7 +174,42 @@ select.tin{padding:8px 10px}
 .mbox img{width:100%;border-radius:10px;border:1px solid var(--line);background:repeating-conic-gradient(#e6e6e6 0 25%,#fff 0 50%) 0/16px 16px;-webkit-user-select:auto;user-select:auto;-webkit-touch-callout:default}
 .mbox textarea{width:100%;height:110px;font-family:var(--f-mono);font-size:11px;border-radius:10px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);padding:8px;resize:vertical;-webkit-user-select:text;user-select:text}
 .pbtn{background:var(--accent);color:var(--accent-ink);padding:10px 14px;border-radius:10px;font-weight:600}
-.toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:9px 14px;border-radius:999px;font-size:13px;z-index:50;pointer-events:none}
+.library{position:fixed;inset:0;z-index:30;background:var(--bg);display:grid;grid-template-rows:auto minmax(0,1fr) auto}
+.lhead{display:flex;align-items:center;gap:6px;background:var(--panel);border-bottom:1px solid var(--line);padding-top:calc(8px + env(safe-area-inset-top,0px));padding-bottom:8px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.lhead h2{flex:1;min-width:0;margin:0 6px;font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbtn{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;background:var(--sunk);font-size:14px;font-weight:500}
+.lbtn svg{width:18px;height:18px}
+.lbody{overflow:auto;padding-block:16px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px;align-content:start}
+.lsec h3{margin-bottom:10px}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.dcard,.fcard,.dnew{position:relative;border-radius:14px;background:var(--panel);border:1px solid var(--line);cursor:pointer;text-align:left;min-width:0}
+.dcard .dth{aspect-ratio:1;display:grid;place-items:center;padding:12px;background:repeating-conic-gradient(var(--sunk) 0 25%,transparent 0 50%) 0/14px 14px;border-radius:13px 13px 0 0;border-bottom:1px solid var(--line)}
+.dcard .dth img{max-width:100%;max-height:100%;width:auto;height:auto;box-shadow:0 1px 6px rgba(10,20,30,.16);background:#fff}
+.dmeta{padding:9px 40px 10px 11px;display:grid;gap:2px;min-width:0}
+.dmeta b{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dmeta small{font-size:12px;color:var(--muted)}
+.dcard.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.dcard.cur small{color:var(--accent)}
+.dmore{position:absolute;right:4px;bottom:4px;width:34px!important;height:34px!important}
+.fcard{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;padding:12px 40px 12px 12px}
+.fcard>svg{width:30px;height:30px;color:var(--accent)}
+.fcard b{display:block;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fcard small{font-size:12px;color:var(--muted)}
+.fcard .dmore{top:50%;bottom:auto;transform:translateY(-50%)}
+.dnew{display:grid;place-items:center;align-content:center;gap:8px;min-height:190px;border-style:dashed;color:var(--accent);font-weight:600;font-size:14px;background:transparent}
+.dnew svg{width:30px;height:30px}
+.lempty{color:var(--muted);font-size:14px;margin:0}
+.lfoot{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;background:var(--panel);border-top:1px solid var(--line);padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.lfoot button{display:flex;align-items:center;gap:6px;padding:9px 12px;border-radius:10px;background:var(--sunk);font-size:13px}
+.lfoot svg{width:18px;height:18px}
+.sheet .btns button{font-size:14px;padding:10px 12px}
+.sheet .list{display:grid;gap:4px}
+.sheet .list button{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--sunk);text-align:left;font-size:15px}
+.sheet .list button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.sheet .list svg{width:20px;height:20px}
+.danger{color:var(--danger)!important}
+.btns .pbtn.dng{background:var(--danger);color:#fff}
+.toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:9px 14px;border-radius:999px;font-size:13px;z-index:50;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -179,7 +218,7 @@ select.tin{padding:8px 10px}
 <div id="app">
   <header class="top">
     <button class="ib" id="bMenu" aria-label="Menu" title="Menu"></button>
-    <div class="brand"><i></i><span>Tessera</span></div>
+    <button class="brand" id="bLib" title="My designs" aria-label="My designs"><i></i><span id="dname">Tessera</span></button>
     <div class="sep"></div>
     <button class="ib" id="bSnap" aria-label="Smart snapping" title="Smart snapping (guides, 15° rotation)"></button>
     <button class="ib" id="bMulti" aria-label="Multi-select" title="Multi-select: tap to add shapes"></button>
@@ -211,6 +250,19 @@ select.tin{padding:8px 10px}
   <div class="pwrap" id="pwrap">
     <button class="handle" id="handle" aria-label="Collapse panel" aria-expanded="true"><span class="grip"></span><span class="hlab" id="hlab">Shapes</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
     <section class="panel" id="panel"></section>
+  </div>
+  <div class="library" id="lib" hidden role="dialog" aria-label="My designs">
+    <header class="lhead">
+      <button class="ib" id="libBack" aria-label="Back to all designs" hidden></button>
+      <h2 id="libTitle">My designs</h2>
+      <button class="lbtn" id="libNewFolder"></button>
+      <button class="ib" id="libClose" aria-label="Back to the canvas" title="Back to the canvas"></button>
+    </header>
+    <div class="lbody" id="libBody"></div>
+    <footer class="lfoot">
+      <button id="libBackup"></button><button id="libRestore"></button>
+      <input type="file" id="libFile" accept=".json,application/json" hidden>
+    </footer>
   </div>
   <nav class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="shapes">Shapes</button>
@@ -279,6 +331,11 @@ const IC={
  bgroup:I('<rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 2"/><rect x="6" y="6" width="6" height="6" rx="1" fill="currentColor" fill-opacity=".3"/><circle cx="15" cy="15" r="3" fill="currentColor" fill-opacity=".3"/>'),
  bungroup:I('<rect x="3" y="3" width="8" height="8" rx="1" fill="currentColor" fill-opacity=".3"/><circle cx="17" cy="17" r="4" fill="currentColor" fill-opacity=".3"/><path d="M14 6h6M17 3v6" stroke-opacity="0"/>'),
  bbuild:I('<circle cx="9" cy="10" r="6"/><circle cx="15" cy="10" r="6"/><path d="M12 5.2a6 6 0 0 1 0 9.6a6 6 0 0 1 0-9.6z" fill="currentColor" fill-opacity=".45"/><path d="M4 21h16" stroke-dasharray="2 2"/>'),
+ folder:I('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="currentColor" fill-opacity=".15"/>'),
+ fplus:I('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10v6M9 13h6"/>'),
+ plus:I('<path d="M12 5v14M5 12h14"/>'), more:I('<circle cx="5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="12" r="1.3" fill="currentColor"/>'),
+ back:I('<path d="M15 5l-7 7 7 7"/>'), close:I('<path d="M6 6l12 12M18 6 6 18"/>'), grid4:I('<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>'),
+ save:I('<path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 19h14"/>'), upload:I('<path d="M12 15V4M7 9l5-5 5 5"/><path d="M5 19h14"/>'), pencil:I('<path d="M4 20h4L19 9l-4-4L4 16z"/>'),
  bsplit:I('<path d="M4 4h7v7H4zM13 13h7v7h-7z" fill="currentColor" fill-opacity=".3"/><path d="M14 4l6 6M20 4l-6 6" stroke-opacity=".5"/>'),
  ratio:I('<rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M8 10h3M13 14h3"/>'),
  file:I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>'), fit:I('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
@@ -359,7 +416,7 @@ const cv=$('cv'), world=$('world'), panel=$('panel');
 const byId=id=>doc.shapes.find(s=>s.id===id);
 const selShapes=()=>sel.map(byId).filter(Boolean);
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const save=()=>{try{localStorage.setItem('tessera.doc',JSON.stringify(doc))}catch(e){}};
+const save=()=>{try{localStorage.setItem('tessera.doc',JSON.stringify(doc))}catch(e){}queueSave()};
 const snap=()=>JSON.stringify(doc);
 function pushUndo(prev){undo.push(prev||snap());if(undo.length>150)undo.shift();redo=[]}
 function restore(str){const w=W,h=H;doc=JSON.parse(str);syncSize();sel=sel.filter(byId);if(ep){const s=byId(ep.id);if(s&&s.type==='path'){ep.cs=parsePD(s.pd);ep.si=null}else ep=null}if(w!==W||h!==H)fit();refresh()}
@@ -1300,9 +1357,10 @@ $('bgfile').addEventListener('change',e=>{const f=e.target.files[0];e.target.val
     const m=2400,sc=Math.min(1,m/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement('canvas');
     c.width=Math.round(img.naturalWidth*sc);c.height=Math.round(img.naturalHeight*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);
     const png=/png|gif|webp/.test(f.type)&&c.width*c.height<1.5e6,data=c.toDataURL(png?'image/png':'image/jpeg',.85);
-    const id=gid();bgData={[id]:data};pushUndo();
+    const id=gid();bgData[id]=data;pushUndo();
     doc.bgImg={id,fit:'fill',op:1,show:true,exp:true,iw:img.naturalWidth,ih:img.naturalHeight};
-    try{localStorage.setItem('tessera.bgimg',JSON.stringify({id,data}))}catch(err){toast('Image added, but it is too big to keep after you close the app')}
+    DB.put('images',id,data);
+    try{localStorage.setItem('tessera.bgimg',JSON.stringify({id,data}))}catch(err){}
     sel=[];styleT='bg';openTab('style');refresh();toast('Background image added');
   };
   img.onerror=()=>{URL.revokeObjectURL(url);toast('That file could not be opened as an image')};img.src=url;});
@@ -1311,12 +1369,16 @@ $('epDone').onclick=()=>sb?sbFinish(true):exitEdit();
  $('fbar').addEventListener('click',e=>{const b=e.target.closest('[data-qa]');if(b)act(b.dataset.qa,b.dataset.arg)});}
 let menuEl=null;
 $('bMenu').onclick=e=>{e.stopPropagation();if(menuEl){menuEl.remove();menuEl=null;return}
-  menuEl=document.createElement('div');menuEl.className='menu';
-  menuEl.innerHTML=`<button data-m="export">${IC.img}Export image &amp; SVG</button><button data-m="canvas">${IC.ratio}Canvas size</button><button data-m="bg">${IC.img}Background image</button><button data-m="fit">${IC.fit}Fit canvas to screen</button><hr><button data-m="new">${IC.file}New blank canvas</button><button data-m="sample">${IC.spark}Load example</button>`;
+  menuEl=document.createElement('div');menuEl.className='menu';menuEl.style.maxHeight='calc(100% - 70px)';menuEl.style.overflow='auto';
+  menuEl.innerHTML=`<div class="mname">${esc(curName)}</div><button data-m="lib">${IC.grid4}My designs</button><button data-m="newd">${IC.plus}New design</button><button data-m="dupd">${IC.dup}Save a copy</button><button data-m="ren">${IC.pencil}Rename or move</button><hr><button data-m="export">${IC.img}Export image &amp; SVG</button><button data-m="canvas">${IC.ratio}Canvas size</button><button data-m="bg">${IC.img}Background image</button><button data-m="fit">${IC.fit}Fit canvas to screen</button><hr><button data-m="new">${IC.del}Clear this canvas</button><button data-m="sample">${IC.spark}Load example</button>`;
   document.body.appendChild(menuEl);
   menuEl.onclick=ev=>{const m=ev.target.closest('[data-m]')?.dataset.m;if(!m)return;menuEl.remove();menuEl=null;
     if(m==='fit')fit();
-    if(m==='new'){pushUndo();doc={bg:'#ffffff',W,H,shapes:[]};sel=[];tab='shapes';refresh();toast('New canvas — undo brings the old one back')}
+    if(m==='lib')openLib();
+    if(m==='newd')newDesign(curFolder);
+    if(m==='dupd')duplicateDesign(curId,true);
+    if(m==='ren'){flushSave().then(()=>designSheet(curId))}
+    if(m==='new'){pushUndo();doc={bg:'#ffffff',W,H,shapes:[]};sel=[];tab='shapes';refresh();toast('Canvas cleared — undo brings it back')}
     if(m==='sample'){pushUndo();doc=sample();syncSize();sel=[];fit();refresh()}
     if(m==='canvas'){sel=[];openTab('arrange');refresh()}
     if(m==='bg'){sel=[];styleT='bg';openTab('style');refresh();if(!(doc.bgImg&&bgData[doc.bgImg.id]))$('bgfile').click()}
@@ -1336,6 +1398,11 @@ function openExport(){
     <div class="btns"><button class="pbtn" id="copysvg">Copy SVG code</button><button id="closex">Close</button></div></div>`;
   document.body.appendChild(m);
   $('svgcode').value=svg;
+  getDL().then(dl=>{if(!dl||!document.body.contains(m))return;
+    const mk=(label,fn)=>{const b=document.createElement('button');b.className='pbtn';b.textContent=label;b.onclick=fn;$('copysvg').before(b);return b};
+    mk('Save PNG',()=>{const src=$('pngimg').src;if(!src.startsWith('data:image/png'))return toast('The image is still rendering');Promise.resolve((()=>{const bin=atob(src.split(',')[1]),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:'image/png'})})()).then(b=>offerFile('tessera.png',b)).then(r=>{if(r==='saved')toast('PNG saved')})});
+    mk('Save SVG',()=>offerFile('tessera.svg',new Blob([svg],{type:'image/svg+xml'})).then(r=>{if(r==='saved')toast('SVG saved')}));
+  });
   m.addEventListener('click',e=>{if(e.target===m||e.target.id==='closex')m.remove()});
   $('copysvg').onclick=()=>{const ta=$('svgcode');navigator.clipboard?.writeText(svg).then(()=>toast('SVG copied')).catch(()=>{ta.focus();ta.select();toast('Selected — copy it from the box')})||(ta.focus(),ta.select())};
   const img=new Image();img.onload=()=>{const c=document.createElement('canvas');const L=Math.max(W,H),sc=Math.min(4096/L,Math.max(1,2000/L));c.width=Math.round(W*sc);c.height=Math.round(H*sc);const g=c.getContext('2d');g.drawImage(img,0,0,c.width,c.height);
@@ -1359,6 +1426,7 @@ addEventListener('keydown',e=>{
   if(mod&&k==='a'){e.preventDefault();act('selall');return}
   if(k==='alt'&&sb){sb.mode=sb.mode==='merge'?'erase':'merge';renderPanel();return}
   if(k==='delete'||k==='backspace'){if(sb)return;e.preventDefault();act(ep&&ep.si?'epdel':'del');return}
+  if(!$('lib').hidden){if(k==='escape'){sheetEl?closeSheet():closeLib()}return}
   if(k==='escape'){if(sb)return sbFinish(false);if(ep)return exitEdit();sel=[];inG=null;refresh();return}
   if(e.shiftKey&&!mod&&k==='m'){e.preventDefault();sb?sbFinish(true):act('sbstart');return}
   if(e.shiftKey&&!mod&&(k==='h'||k==='v')){e.preventDefault();act('flip',k);return}
@@ -1369,12 +1437,218 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>{if(e.key===' ')spaceDown=false});
 
+// ---------- design library ----------
+// Designs and folders live in this device's IndexedDB. The open design is also mirrored in localStorage so the app starts instantly.
+let curId=null,curName='Untitled',curFolder=null,lastSaved='',folders=[],libFolder=null,dbOK=false;
+try{curId=localStorage.getItem('tessera.current')}catch(e){}
+const MEM={designs:{},images:{},meta:{}};
+const DB={db:null,
+  open(){return new Promise(res=>{try{const r=indexedDB.open('tessera',1);
+    r.onupgradeneeded=()=>{const d=r.result;['designs','images','meta'].forEach(n=>{if(!d.objectStoreNames.contains(n))d.createObjectStore(n)})};
+    r.onsuccess=()=>{DB.db=r.result;res(true)};r.onerror=()=>res(false);r.onblocked=()=>res(false)}catch(e){res(false)}})},
+  req(store,mode,fn){if(!DB.db)return Promise.resolve(fn(null,MEM[store]));
+    return new Promise(res=>{try{const t=DB.db.transaction(store,mode),r=fn(t.objectStore(store));t.oncomplete=()=>res(r?r.result:undefined);t.onerror=t.onabort=()=>res(undefined)}catch(e){res(undefined)}})},
+  get(s,k){return DB.req(s,'readonly',(st,m)=>st?st.get(k):m[k])},
+  put(s,k,v){return DB.req(s,'readwrite',(st,m)=>st?st.put(v,k):(m[k]=v,undefined))},
+  del(s,k){return DB.req(s,'readwrite',(st,m)=>st?st.delete(k):(delete m[k],undefined))},
+  all(s){return DB.req(s,'readonly',(st,m)=>st?st.getAll():Object.values(m)).then(v=>v||[])},
+};
+const uid=()=>'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function thumbSVG(){
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${Math.round(W/Math.max(W,H)*240)}" height="${Math.round(H/Math.max(W,H)*240)}"><rect width="${W}" height="${H}" fill="${doc.bg}"/>${doc.shapes.map(s=>shapeSVG(s,true)).join('')}</svg>`;
+}
+function nextName(list){const used=new Set(list.map(d=>d.name));let n=list.length+1;while(used.has('Design '+n))n++;return'Design '+n}
+function showName(){$('dname').textContent=curName;$('bLib').title=`My designs — editing “${curName}”`}
+let saveT=null;
+function queueSave(){clearTimeout(saveT);saveT=setTimeout(flushSave,600)}
+async function flushSave(){
+  clearTimeout(saveT);saveT=null;if(!curId)return;
+  const str=JSON.stringify(doc);if(str===lastSaved)return;lastSaved=str;
+  const old=await DB.get('designs',curId)||{};
+  await DB.put('designs',curId,{...old,id:curId,name:curName,folder:curFolder,created:old.created||Date.now(),updated:Date.now(),doc:JSON.parse(str),thumb:thumbSVG()});
+  if(!$('lib').hidden)renderLib();
+}
+function cacheCurrentImage(){try{const b=doc.bgImg;if(b&&bgData[b.id])localStorage.setItem('tessera.bgimg',JSON.stringify({id:b.id,data:bgData[b.id]}));else localStorage.removeItem('tessera.bgimg')}catch(e){}}
+async function loadDoc(rec){
+  curId=rec.id;curName=rec.name;curFolder=rec.folder||null;doc=JSON.parse(JSON.stringify(rec.doc));syncSize();
+  sel=[];ep=null;sb=null;inG=null;undo=[];redo=[];lastSaved=JSON.stringify(doc);
+  if(doc.bgImg&&!bgData[doc.bgImg.id]){const d=await DB.get('images',doc.bgImg.id);if(d)bgData[doc.bgImg.id]=d}
+  try{localStorage.setItem('tessera.current',curId);localStorage.setItem('tessera.doc',lastSaved)}catch(e){}
+  cacheCurrentImage();showName();fit();refresh();
+}
+async function openDesign(id){
+  if(id===curId){closeLib();return}
+  await flushSave();const rec=await DB.get('designs',id);if(!rec){toast('That design could not be opened');return}
+  await loadDoc(rec);closeLib();toast(`Opened “${curName}”`);
+}
+async function newDesign(folder){
+  await flushSave();const list=await DB.all('designs');
+  await loadDoc({id:uid(),name:nextName(list),folder:folder??null,doc:{bg:'#ffffff',W,H,shapes:[],grid:doc.grid?{...doc.grid}:undefined,guides:[]}});
+  lastSaved='';await flushSave();closeLib();toast(`Started “${curName}”`);
+}
+async function duplicateDesign(id,open){
+  await flushSave();const rec=await DB.get('designs',id);if(!rec)return;
+  const cp={...JSON.parse(JSON.stringify(rec)),id:uid(),name:rec.name+' copy',created:Date.now(),updated:Date.now()};
+  await DB.put('designs',cp.id,cp);
+  if(open){await loadDoc(cp);closeLib();toast(`Now editing “${cp.name}”`)}else{toast(`Made “${cp.name}”`);renderLib()}
+}
+async function deleteDesign(id){
+  const rec=await DB.get('designs',id);if(!rec)return;await DB.del('designs',id);
+  const imgId=rec.doc&&rec.doc.bgImg&&rec.doc.bgImg.id;
+  const rest=await DB.all('designs');
+  if(imgId&&!rest.some(d=>d.doc&&d.doc.bgImg&&d.doc.bgImg.id===imgId))DB.del('images',imgId);
+  if(id===curId){
+    if(rest.length){rest.sort((a,b)=>b.updated-a.updated);await loadDoc(rest[0])}
+    else{curId=null;await loadDoc({id:uid(),name:'Design 1',folder:null,doc:{bg:'#ffffff',W,H,shapes:[]}});lastSaved='';await flushSave()}
+  }
+  toast(`Deleted “${rec.name}”`);renderLib();
+}
+async function patchDesign(id,patch){
+  if(id===curId){if('name'in patch){curName=patch.name;showName()}if('folder'in patch)curFolder=patch.folder}
+  const rec=await DB.get('designs',id);if(!rec)return;await DB.put('designs',id,{...rec,...patch});renderLib();
+}
+const saveFolders=()=>DB.put('meta','folders',folders);
+
+// Inside Claude the page must ask the viewer before saving a file; elsewhere (the installed app) this returns null
+let dlP=null;
+const getDL=()=>dlP||(dlP=(window.claude&&window.claude.use)?window.claude.use('downloads').catch(()=>null):Promise.resolve(null));
+async function offerFile(name,blob){
+  const dl=await getDL();if(!dl)return null;
+  try{await dl.save({filename:name,data:blob});return'saved'}
+  catch(e){const c=e&&e.code;if(c==='declined')return'declined';toast(c==='rate_limited'?'A save is already waiting for your answer':'Saving files isn’t available here');return'failed'}
+}
+// ----- library screen -----
+function openLib(){flushSave();libFolder=null;$('lib').hidden=false;renderLib()}
+function closeLib(){$('lib').hidden=true;closeSheet()}
+function ago(t){const s=(Date.now()-t)/1000;if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' h ago';
+  const d=new Date(t);return d.toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:d.getFullYear()===new Date().getFullYear()?undefined:'numeric'})}
+async function renderLib(){
+  const all=(await DB.all('designs')).sort((a,b)=>b.updated-a.updated);
+  const fd=libFolder&&folders.find(f=>f.id===libFolder);if(libFolder&&!fd)libFolder=null;
+  $('libTitle').textContent=fd?fd.name:'My designs';$('libBack').hidden=!fd;
+  const card=d=>`<div class="dcard ${d.id===curId?'cur':''}" data-open="${d.id}" role="button" tabindex="0" aria-label="Open ${esc(d.name)}">
+      <div class="dth">${d.thumb?`<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(d.thumb)}" alt="">`:''}</div>
+      <div class="dmeta"><b>${esc(d.name)}</b><small>${d.id===curId?'Open now · ':''}${ago(d.updated)}</small></div>
+      <button class="ib dmore" data-more="${d.id}" aria-label="Options for ${esc(d.name)}">${IC.more}</button></div>`;
+  const here=all.filter(d=>(d.folder||null)===libFolder&&(!d.folder||folders.some(f=>f.id===d.folder))||(!libFolder&&d.folder&&!folders.some(f=>f.id===d.folder)));
+  let h='';
+  if(!libFolder&&folders.length){
+    h+=`<section class="lsec"><h3>Folders</h3><div class="lgrid">`+folders.map(f=>{const n=all.filter(d=>d.folder===f.id).length;
+      return `<div class="fcard" data-folder="${f.id}" role="button" tabindex="0">${IC.folder}<div><b>${esc(f.name)}</b><small>${n} design${n===1?'':'s'}</small></div><button class="ib dmore" data-fmore="${f.id}" aria-label="Options for folder ${esc(f.name)}">${IC.more}</button></div>`}).join('')+`</div></section>`;
+  }
+  h+=`<section class="lsec">${!libFolder&&folders.length?'<h3>Designs</h3>':''}<div class="lgrid"><button class="dnew" data-new>${IC.plus}<span>New design</span></button>${here.map(card).join('')}</div>
+    ${!here.length&&libFolder?'<p class="lempty" style="margin-top:12px">This folder is empty. Start a new design here, or move designs in with ⋯ → Move to folder.</p>':''}</section>`;
+  if(!dbOK)h+=`<p class="lempty">Designs can’t be stored in this browser, so they only last until you close it. Use Back up to keep them.</p>`;
+  $('libBody').innerHTML=h;
+}
+let sheetEl=null;
+function closeSheet(){sheetEl?.remove();sheetEl=null}
+function sheet(html,onAct){
+  closeSheet();sheetEl=document.createElement('div');sheetEl.className='modal sheet';
+  sheetEl.innerHTML=`<div class="mbox" role="dialog">${html}</div>`;document.body.appendChild(sheetEl);
+  sheetEl.addEventListener('click',e=>{if(e.target===sheetEl)return closeSheet();const b=e.target.closest('[data-s]');if(b)onAct(b.dataset.s,b.dataset.v,b)});
+  sheetEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input')){e.preventDefault();sheetEl.querySelector('.pbtn')?.click()}if(e.key==='Escape')closeSheet()});
+  const inp=sheetEl.querySelector('input');if(inp)setTimeout(()=>{inp.focus();inp.select()},50);
+}
+async function designSheet(id){
+  const d=await DB.get('designs',id);if(!d)return;
+  const fname=d.folder&&folders.find(f=>f.id===d.folder)?.name;
+  sheet(`<h2>${esc(d.name)}</h2><p class="note">${fname?'In '+esc(fname)+' · ':''}${d.doc.W} × ${d.doc.H} · ${d.doc.shapes.length} shape${d.doc.shapes.length===1?'':'s'} · edited ${ago(d.updated)}</p>
+    <label class="note" for="sName">Name</label><input class="tin" id="sName" value="${esc(d.name)}" autocomplete="off" maxlength="60">
+    <div class="btns"><button class="pbtn" data-s="rename">Save name</button></div>
+    <div class="list">${id!==curId?`<button data-s="open">${IC.file}Open</button>`:''}<button data-s="dup">${IC.dup}Duplicate</button><button data-s="move">${IC.folder}Move to folder</button><button data-s="del" class="danger">${IC.del}Delete</button></div>
+    <div class="btns"><button data-s="x">Close</button></div>`,
+  async(a)=>{
+    if(a==='x')return closeSheet();
+    if(a==='rename'){const v=$('sName').value.trim();if(!v)return toast('Give the design a name');await patchDesign(id,{name:v});closeSheet();toast('Renamed')}
+    if(a==='open'){closeSheet();openDesign(id)}
+    if(a==='dup'){closeSheet();duplicateDesign(id,false)}
+    if(a==='move'){moveSheet(id,d.folder||null)}
+    if(a==='del')sheet(`<h2>Delete “${esc(d.name)}”?</h2><p class="note">This removes it from this device. It can’t be undone.</p><div class="btns"><button class="pbtn dng" data-s="yes">Delete</button><button data-s="no">Keep it</button></div>`,
+      async b=>{closeSheet();if(b==='yes')deleteDesign(id)});
+  });
+}
+function moveSheet(id,cur){
+  sheet(`<h2>Move to folder</h2><div class="list"><button data-s="to" data-v="" aria-pressed="${!cur}">${IC.grid4}No folder</button>${folders.map(f=>`<button data-s="to" data-v="${f.id}" aria-pressed="${cur===f.id}">${IC.folder}${esc(f.name)}</button>`).join('')}</div>
+    <label class="note" for="sNew">Or make a new folder</label><input class="tin" id="sNew" placeholder="Folder name" autocomplete="off" maxlength="40">
+    <div class="btns"><button class="pbtn" data-s="newf">Create &amp; move</button><button data-s="x">Cancel</button></div>`,
+  async(a,v)=>{
+    if(a==='x')return closeSheet();
+    if(a==='to'){await patchDesign(id,{folder:v||null});closeSheet();toast(v?`Moved to ${folders.find(f=>f.id===v).name}`:'Moved out of folder')}
+    if(a==='newf'){const n=$('sNew').value.trim();if(!n)return toast('Type a folder name first');const f={id:'f'+uid(),name:n};folders.push(f);await saveFolders();await patchDesign(id,{folder:f.id});closeSheet();toast(`Moved to ${n}`)}
+  });
+}
+function folderSheet(fid){
+  const f=folders.find(x=>x.id===fid);if(!f){
+    return sheet(`<h2>New folder</h2><input class="tin" id="sName" placeholder="Folder name, e.g. Logos" autocomplete="off" maxlength="40"><div class="btns"><button class="pbtn" data-s="make">Create folder</button><button data-s="x">Cancel</button></div>`,
+      async a=>{if(a==='x')return closeSheet();const n=$('sName').value.trim();if(!n)return toast('Type a folder name first');folders.push({id:'f'+uid(),name:n});await saveFolders();closeSheet();renderLib();toast(`Folder “${n}” created`)});
+  }
+  sheet(`<h2>${esc(f.name)}</h2><label class="note" for="sName">Folder name</label><input class="tin" id="sName" value="${esc(f.name)}" autocomplete="off" maxlength="40">
+    <div class="btns"><button class="pbtn" data-s="rename">Save name</button></div>
+    <div class="list"><button data-s="new">${IC.plus}New design in this folder</button><button data-s="del" class="danger">${IC.del}Delete folder</button></div><div class="btns"><button data-s="x">Close</button></div>`,
+  async a=>{
+    if(a==='x')return closeSheet();
+    if(a==='rename'){const n=$('sName').value.trim();if(!n)return;f.name=n;await saveFolders();closeSheet();renderLib();if(curFolder===f.id)showName()}
+    if(a==='new'){closeSheet();newDesign(f.id)}
+    if(a==='del')sheet(`<h2>Delete folder “${esc(f.name)}”?</h2><p class="note">The folder goes, but the designs in it are kept and move back to My designs.</p><div class="btns"><button class="pbtn dng" data-s="yes">Delete folder</button><button data-s="no">Cancel</button></div>`,
+      async b=>{closeSheet();if(b!=='yes')return;folders=folders.filter(x=>x.id!==fid);await saveFolders();
+        for(const d of await DB.all('designs'))if(d.folder===fid)await DB.put('designs',d.id,{...d,folder:null});
+        if(curFolder===fid)curFolder=null;if(libFolder===fid)libFolder=null;renderLib();toast('Folder deleted, designs kept')});
+  });
+}
+// backup and restore
+async function backup(){
+  await flushSave();const designs=await DB.all('designs'),images={};
+  for(const d of designs){const id=d.doc&&d.doc.bgImg&&d.doc.bgImg.id;if(id&&!images[id]){const im=bgData[id]||await DB.get('images',id);if(im)images[id]=im}}
+  const data=JSON.stringify({app:'tessera',version:1,exported:new Date().toISOString(),folders,designs,images});
+  const name=`tessera-backup-${new Date().toISOString().slice(0,10)}.json`,blob=new Blob([data],{type:'application/json'});
+  const r=await offerFile(name,blob);if(r==='saved')return toast(`Backed up ${designs.length} design${designs.length===1?'':'s'}`);if(r)return;
+  try{const f=new File([blob],name,{type:'application/json'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Tessera backup'});return}
+  }catch(e){if(e&&e.name==='AbortError')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+  toast(`Saving ${designs.length} design${designs.length===1?'':'s'} to ${name}`);
+}
+$('libFile').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  const r=new FileReader();r.onload=async()=>{let b;try{b=JSON.parse(r.result)}catch(err){return toast('That file isn’t a Tessera backup')}
+    if(!b||b.app!=='tessera'||!Array.isArray(b.designs))return toast('That file isn’t a Tessera backup');
+    for(const f of b.folders||[])if(!folders.some(x=>x.id===f.id))folders.push(f);await saveFolders();
+    for(const[id,data]of Object.entries(b.images||{}))await DB.put('images',id,data);
+    let n=0;const have=await DB.all('designs');
+    for(const d of b.designs){const ex=have.find(x=>x.id===d.id);if(ex&&ex.updated>=d.updated)continue;await DB.put('designs',d.id,d);n++}
+    renderLib();toast(n?`Restored ${n} design${n===1?'':'s'}`:'Everything in that backup is already here');
+  };r.readAsText(f);});
+// wiring
+$('libBack').innerHTML=IC.back;$('libClose').innerHTML=IC.close;$('libNewFolder').innerHTML=IC.fplus+'<span>Folder</span>';
+$('libBackup').innerHTML=IC.save+'<span>Back up all designs</span>';$('libRestore').innerHTML=IC.upload+'<span>Restore a backup</span>';
+$('bLib').onclick=openLib;$('libClose').onclick=closeLib;$('libBack').onclick=()=>{libFolder=null;renderLib()};
+$('libNewFolder').onclick=()=>folderSheet(null);$('libBackup').onclick=backup;$('libRestore').onclick=()=>$('libFile').click();
+$('libBody').addEventListener('click',e=>{
+  const m=e.target.closest('[data-more]');if(m)return designSheet(m.dataset.more);
+  const fm=e.target.closest('[data-fmore]');if(fm)return folderSheet(fm.dataset.fmore);
+  if(e.target.closest('[data-new]'))return newDesign(libFolder);
+  const f=e.target.closest('[data-folder]');if(f){libFolder=f.dataset.folder;return renderLib()}
+  const o=e.target.closest('[data-open]');if(o)openDesign(o.dataset.open);
+});
+$('libBody').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[role=button]'))e.target.click()});
+addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushSave()});
+addEventListener('pagehide',flushSave);
+async function initLibrary(){
+  dbOK=await DB.open();folders=(await DB.get('meta','folders'))||[];
+  let rec=curId&&await DB.get('designs',curId);
+  if(!rec){const list=await DB.all('designs');curId=curId||uid();curName=nextName(list);curFolder=null;lastSaved='';
+    try{localStorage.setItem('tessera.current',curId)}catch(e){}await flushSave()}
+  else{curName=rec.name;curFolder=rec.folder||null;lastSaved=''}
+  const b=doc.bgImg;if(b){if(bgData[b.id])DB.put('images',b.id,bgData[b.id]);else{const d=await DB.get('images',b.id);if(d){bgData[b.id]=d;renderCanvas()}}}
+  showName();
+}
+
 // ---------- toast ----------
 let tt;function toast(msg){document.querySelector('.toast')?.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);clearTimeout(tt);tt=setTimeout(()=>t.remove(),1600)}
 
 if(matchMedia('(pointer:fine)').matches)$('hint').textContent='Scroll to pan · Ctrl/⌘ + scroll to zoom · Shift for multi-select & proportional resize';
 setTimeout(()=>$('hint')?.remove(),7000);
-fit();refresh();
+fit();refresh();showName();initLibrary();
 })();
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
