@@ -474,6 +474,7 @@ function shapeSVG(s,exp){
   }
   return `<g transform="${t}" opacity="${s.op}"${attrs}><path d="${scaleD(shapeD(s),s.w,s.h)}" fill-rule="evenodd" ${paint}/></g>`;
 }
+let polarGuide=null;
 let guides={x:null,y:null}, marq=null, sizeMatch={w:null,h:null};
 function dimMark(s,dim,k){
   const P='#e0457b',off=16*k,t=5*k,fs=12*k,lab=Math.round(dim==='w'?s.w:s.h);
@@ -529,6 +530,11 @@ function overlay(){
       const kb=aabb(ks);o+=`<g pointer-events="none" transform="translate(${kb.l} ${kb.t-6*k})"><rect x="0" y="${-18*k}" width="${40*k}" height="${18*k}" rx="${4*k}" fill="${A}"/><text x="${20*k}" y="${-9*k}" font-size="${11*k}" font-weight="700" fill="var(--accent-ink)" text-anchor="middle" dominant-baseline="central" font-family="JetBrains Mono, monospace">KEY</text></g>`;
     }
   }
+  if(polarGuide){const g=polarGuide,P='#e0457b';
+    o+=`<g pointer-events="none"><circle cx="${g.ox}" cy="${g.oy}" r="${g.R}" fill="none" stroke="${P}" stroke-width="${1.2*k}" stroke-dasharray="${6*k} ${4*k}"/><circle cx="${g.ox}" cy="${g.oy}" r="${3.5*k}" fill="${P}"/><circle cx="${g.cx}" cy="${g.cy}" r="${3.5*k}" fill="${P}"/>`;
+    if(g.ang!=null){const lx=g.ox+(g.cx-g.ox)*.5,ly=g.oy+(g.cy-g.oy)*.5,lab=(g.ang>180?g.ang-360:g.ang)*-1;
+      o+=`<line x1="${g.ox}" y1="${g.oy}" x2="${g.cx}" y2="${g.cy}" stroke="${P}" stroke-width="${1.2*k}"/><rect x="${lx-22*k}" y="${ly-9*k}" width="${44*k}" height="${18*k}" rx="${9*k}" fill="${P}"/><text x="${lx}" y="${ly}" font-size="${11*k}" fill="#fff" text-anchor="middle" dominant-baseline="central" font-family="JetBrains Mono, monospace">${Math.round(lab)}°</text>`}
+    o+='</g>'}
   if(guides.x!=null)o+=`<line x1="${guides.x}" x2="${guides.x}" y1="-100000" y2="100000" stroke="#e0457b" stroke-width="${1.2*k}" pointer-events="none"/>`;
   if(guides.y!=null)o+=`<line y1="${guides.y}" y2="${guides.y}" x1="-100000" x2="100000" stroke="#e0457b" stroke-width="${1.2*k}" pointer-events="none"/>`;
   if(marq){const l=Math.min(marq.a.x,marq.b.x),t=Math.min(marq.a.y,marq.b.y);o+=`<rect x="${l}" y="${t}" width="${Math.abs(marq.a.x-marq.b.x)}" height="${Math.abs(marq.a.y-marq.b.y)}" fill="${A}" fill-opacity=".08" stroke="${A}" stroke-width="${k}" pointer-events="none"/>`}
@@ -632,6 +638,27 @@ function groupBoxes(exclude){
 }
 function bgRect(){const b=doc.bgImg;if(!b||!b.show||!bgData[b.id]||b.fit!=='fit'||!b.iw)return null;
   const k=Math.min(W/b.iw,H/b.ih),w=b.iw*k,h=b.ih*k;return{l:(W-w)/2,r:(W+w)/2,t:(H-h)/2,b:(H+h)/2}}
+const isCircle=s=>s&&s.type==='ellipse'&&Math.abs(s.w-s.h)<Math.max(s.w,s.h)*.01;
+function polarSnap(st,rdx,rdy){
+  const s=st.s;if(!isCircle(s))return null;
+  const cx=st.x+rdx,cy=st.y+rdy,rm=s.w/2,thr=8/view.s;let best=null;
+  for(const o of doc.shapes){
+    if(o===s||o.hidden||sel.includes(o.id))continue;
+    const ox=o.x,oy=o.y,d=Math.hypot(cx-ox,cy-oy);if(d<1)continue;
+    // rings the moving centre can sit on: its edge passes through the other centre, and for other circles
+    // its centre on their edge, edges touching outside, or touching inside
+    const rings=[[rm,'edge through centre']];
+    if(isCircle(o)){const ro=o.w/2;rings.push([ro,'centre on edge'],[rm+ro,'touching'],[Math.abs(rm-ro),'touching inside'])}
+    for(const[R,why]of rings){if(R<1)continue;const err=Math.abs(d-R);if(err>=thr||(best&&err>=best.err))continue;
+      let a=Math.atan2(cy-oy,cx-ox),deg=a*180/Math.PI,snapA=Math.round(deg/15)*15,ang=null;
+      // lock to a 15° step when the ring point there is close to the finger
+      if(Math.abs(rad(snapA-deg))*R<thr*1.5){a=rad(snapA);ang=((snapA%360)+360)%360}
+      best={err,R,ox,oy,a,ang,why}}
+  }
+  if(!best)return null;
+  const tx=best.ox+best.R*Math.cos(best.a),ty=best.oy+best.R*Math.sin(best.a);
+  return{dx:tx-st.x,dy:ty-st.y,g:{ox:best.ox,oy:best.oy,R:best.R,cx:tx,cy:ty,ang:best.ang}};
+}
 function snapTargets(axis,exclude,noGuides){
   const T=[];if(!snapOn)return T;const L=axis==='x'?W:H;
   if(SN.obj){T.push(0,L/2,L);doc.shapes.filter(s=>!exclude.includes(s.id)&&!s.hidden).forEach(s=>{const b=aabb(s);if(axis==='x')T.push(b.l,(b.l+b.r)/2,b.r);else T.push(b.t,(b.t+b.b)/2,b.b)});
@@ -657,7 +684,7 @@ const ptrs=new Map(); let drag=null, pinch=null, lastTap={id:null,t:0};
 cv.addEventListener('pointerdown',e=>{
   cv.setPointerCapture(e.pointerId);
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(ptrs.size===2){ if(drag&&drag.prev&&drag.changed){pushUndo(drag.prev)} if(sb)sb.hover=new Set(); drag=null;guideDrag=null;guides={x:null,y:null};marq=null;sizeMatch={w:null,h:null};startPinch();renderCanvas();return }
+  if(ptrs.size===2){ if(drag&&drag.prev&&drag.changed){pushUndo(drag.prev)} if(sb)sb.hover=new Set(); drag=null;guideDrag=null;guides={x:null,y:null};polarGuide=null;marq=null;sizeMatch={w:null,h:null};startPinch();renderCanvas();return }
   if(ptrs.size>2)return;
   const P=toWorld(e.clientX,e.clientY);
   if(e.button===1||e.button===2||spaceDown){drag={mode:'pan',sx:e.clientX,sy:e.clientY,tx:view.tx,ty:view.ty};return}
@@ -720,11 +747,15 @@ cv.addEventListener('pointermove',e=>{
   if(drag.mode==='move'){
     let dx=P.x-drag.P0.x, dy=P.y-drag.P0.y;
     if(Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<3&&!drag.changed)return;
-    drag.changed=true; guides={x:null,y:null};
+    drag.changed=true; guides={x:null,y:null}; polarGuide=null;
+    const rdx=dx,rdy=dy;
     if(snapOn&&drag.starts.length){
       const moved=drag.starts.map(o=>({...o.s,x:o.x+dx,y:o.y+dy}));const b=union(moved);
       const[ax,gx]=bestSnap([b.l,(b.l+b.r)/2,b.r],snapTargets('x',sel)),[ay,gy]=bestSnap([b.t,(b.t+b.b)/2,b.b],snapTargets('y',sel));
       if(ax!=null){dx+=ax;guides.x=gx} if(ay!=null){dy+=ay;guides.y=gy}
+      // circles also snap around other circles: edge through a centre, touching edges, at 15° steps
+      const pol=drag.starts.length===1&&SN.obj?polarSnap(drag.starts[0],rdx,rdy):null;
+      if(pol){dx=pol.dx;dy=pol.dy;guides={x:null,y:null};polarGuide=pol.g}
     }
     drag.starts.forEach(o=>{o.s.x=o.x+dx;o.s.y=o.y+dy});
     renderCanvas();return;
@@ -850,7 +881,7 @@ function endPtr(e){
     if(lastTap.id===drag.id&&now-lastTap.t<380){onDoubleTap(drag.id);lastTap={id:null,t:0}} else lastTap={id:drag.id,t:now};
   }
   const wasMarq=drag.mode==='marq';
-  drag=null;guides={x:null,y:null};marq=null;sizeMatch={w:null,h:null};
+  drag=null;guides={x:null,y:null};marq=null;sizeMatch={w:null,h:null};polarGuide=null;
   if(wasMarq&&sel.length>1&&!multi)toast(`${sel.length} shapes selected`);
   refresh();
 }
