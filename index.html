@@ -158,6 +158,9 @@ select.tin{padding:8px 10px}
 .ptype[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
 .ptype[aria-pressed="true"] svg{color:var(--accent)}
 .ptype:disabled{opacity:.4;cursor:default}
+.plist{display:grid;gap:4px}
+.plist button{text-align:left;padding:10px 12px;border-radius:10px;background:var(--sunk);font-size:14px}
+.plist button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
 .layers{display:grid;gap:4px}
 .bgrow{display:flex;gap:12px;align-items:center}
 .bgthumb{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:0 0 auto}
@@ -259,6 +262,7 @@ select.tin{padding:8px 10px}
         <button data-qa="flip" data-arg="h" title="Mirror left to right (Shift+H)" aria-label="Mirror left to right"></button>
         <button data-qa="flip" data-arg="v" title="Flip top to bottom (Shift+V)" aria-label="Flip top to bottom"></button>
         <button data-qa="dup" title="Duplicate" aria-label="Duplicate"></button>
+        <button data-qa="rpopen" title="Repeat around" aria-label="Repeat around"></button>
         <button data-qa="rot90" title="Rotate 90° clockwise" aria-label="Rotate 90 degrees clockwise"></button>
         <button data-qa="group" id="qGroup" title="Group (Ctrl+G)" aria-label="Group"></button>
         <button data-qa="ungroup" id="qUngroup" title="Ungroup (Ctrl+Shift+G)" aria-label="Ungroup"></button>
@@ -369,6 +373,7 @@ const IC={
  ptFree:I('<path d="M3 20C5 13 8 9 12 8c3 2 7 6 9 12" stroke-width="2"/><path d="M12 8 6 4M12 8l6-5" stroke-opacity=".55"/><circle cx="12" cy="8" r="2" fill="currentColor" stroke="none"/><circle cx="6" cy="4" r="1.5"/><circle cx="18" cy="3" r="1.5"/>'),
  ptAll:I('<path d="M12 4 20 18H4z" stroke-dasharray="2.5 2"/><circle cx="12" cy="4" r="2" fill="currentColor"/><circle cx="20" cy="18" r="2" fill="currentColor"/><circle cx="4" cy="18" r="2" fill="currentColor"/>'),
  minus:I('<path d="M5 12h14"/>'),
+ repeat:I('<circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="4.5" r="2.2"/><circle cx="18.5" cy="8.3" r="2.2"/><circle cx="18.5" cy="15.7" r="2.2"/><circle cx="12" cy="19.5" r="2.2"/><circle cx="5.5" cy="15.7" r="2.2"/><circle cx="5.5" cy="8.3" r="2.2"/>'),
  bsplit:I('<path d="M4 4h7v7H4zM13 13h7v7h-7z" fill="currentColor" fill-opacity=".3"/><path d="M14 4l6 6M20 4l-6 6" stroke-opacity=".5"/>'),
  ratio:I('<rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M8 10h3M13 14h3"/>'),
  file:I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>'), fit:I('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
@@ -494,6 +499,7 @@ function overlay(){
   for(const key of['w','h']){const m=sizeMatch[key];if(!m)continue;const sl=selShapes();const me=sl.length>1?boxShape(union(sl)):sl[0];if(me)o+=dimMark(me,key,k);
     m.marks.forEach(mk=>{o+=dimMark(mk.t,mk.dim,k)})}
   const ss=selShapes();
+  if(rp&&!sb&&!ep){o+=rpOverlay(k)}
   if(sb){}
   else if(ep){o+=epOverlay(k,A)}
   else if(ss.length===1){
@@ -574,6 +580,7 @@ function shapesSVG(){
 }
 function renderCanvas(){
   epCheck();
+  if(rp&&(ep||sb||!sel.length||sel.length!==rp.ids.length||rp.ids.some(id=>!sel.includes(id))))rp=null;
   world.setAttribute('transform',`matrix(${view.s} 0 0 ${view.s} ${view.tx} ${view.ty})`);
   world.innerHTML=`<defs><clipPath id="artclip"><rect width="${W}" height="${H}"/></clipPath></defs><rect class="artshadow" x="0" y="0" width="${W}" height="${H}" fill="${doc.bg}"/>`+bgImgSVG(false)+
     gridSVG()+`<g clip-path="none">${shapesSVG()}</g>`+guidesSVG()+overlay();
@@ -1005,6 +1012,53 @@ function insertPoint(ci,k){
   c.splice(k,0,n);return[ci,k];
 }
 
+// ---------- repeat around ----------
+let rp=null,rpPrefs={n:6,pivot:'near',turn:true,group:true};
+try{Object.assign(rpPrefs,JSON.parse(localStorage.getItem('tessera.repeat')||'{}'))}catch(e){}
+const rpSave=()=>{try{localStorage.setItem('tessera.repeat',JSON.stringify({n:rp.n,pivot:rp.pivot,turn:rp.turn,group:rp.group}))}catch(e){}};
+function rpNearest(){const ss=selShapes(),b=union(ss),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;let best=null,bd=Infinity;
+  for(const o of doc.shapes){if(o.hidden||sel.includes(o.id))continue;const d=Math.hypot(o.x-cx,o.y-cy);if(d<bd){bd=d;best=o}}return best}
+function rpPivot(){
+  const ss=selShapes(),b=union(ss),c={x:(b.l+b.r)/2,y:(b.t+b.b)/2};
+  if(rp.pivot==='canvas')return{x:W/2,y:H/2};
+  if(rp.pivot==='self')return c;
+  if(rp.pivot==='base'){if(ss.length===1){const s=ss[0],p=rot(0,s.h/2*s.fy,s.r);return{x:s.x+p.x,y:s.y+p.y}}return{x:c.x,y:b.b}}
+  const o=rpNearest();return o?{x:o.x,y:o.y}:{x:W/2,y:H/2};
+}
+function rpCopies(){
+  const pv=rpPivot(),ss=selShapes().filter(s=>!s.locked),out=[];
+  for(let k=1;k<rp.n;k++){const a=360*k/rp.n;for(const s of ss){const p=rot(s.x-pv.x,s.y-pv.y,a);
+    out.push({...s,k,x:pv.x+p.x,y:pv.y+p.y,r:rp.turn?(((s.r+a+180)%360+360)%360-180):s.r,locked:false})}}
+  return{pv,out};
+}
+function rpOverlay(k){
+  const{pv,out}=rpCopies(),P='#e0457b';
+  let o=`<g opacity=".45" pointer-events="none">${out.map(c=>shapeSVG(c,true)).join('')}</g>`;
+  o+=`<g pointer-events="none"><circle cx="${pv.x}" cy="${pv.y}" r="${5*k}" fill="${P}"/><path d="M${pv.x-14*k} ${pv.y}H${pv.x+14*k}M${pv.x} ${pv.y-14*k}V${pv.y+14*k}" stroke="${P}" stroke-width="${1.5*k}"/></g>`;
+  return o;
+}
+function rpApply(){
+  const{out}=rpCopies();if(!out.length)return;pushUndo();
+  const ss=selShapes().filter(s=>!s.locked),g=rp.group?gid():null,gm={};
+  const made=out.map(c=>{const{k,...rest}=c;const key=k+':'+(c.g||'');const ng=g||(c.g?(gm[key]=gm[key]||gid()):undefined);return{...rest,id:'s'+(nid++),g:ng}});
+  if(g)ss.forEach(s=>s.g=g);
+  const top=Math.max(...ss.map(s=>doc.shapes.indexOf(s)));doc.shapes.splice(top+1,0,...made);
+  sel=[...ss.map(s=>s.id),...made.map(s=>s.id)];inG=null;const n=rp.n;rp=null;refresh();
+  toast(`Made ${made.length/Math.max(1,ss.length)} copies, ${+(360/n).toFixed(2)}° apart${g?', grouped':''}`);
+}
+function pRepeat(){
+  const N=[3,4,5,6,8,12].map(v=>`<button data-act="rpn" data-arg="${v}" aria-pressed="${rp.n===v}">${v}</button>`).join('');
+  const near=rpNearest();
+  const P=[['near',near?`Middle of the nearest shape (${esc(shapeN(near).toLowerCase())})`:'Middle of the nearest shape (none yet)'],['canvas','Centre of the canvas'],['self','Its own centre'],['base','Its bottom point']];
+  const T=(a,on,l)=>`<button data-act="${a}" aria-pressed="${on}">${on?'✓ ':''}${l}</button>`;
+  return `<div class="sec"><h3>Repeat around</h3>
+    <div class="row"><div class="seg" role="group" aria-label="How many">${N}</div><div class="num" style="grid-template-columns:64px;flex:0 0 auto"><input type="number" inputmode="numeric" id="rpnum" min="2" max="72" value="${rp.n}" aria-label="How many in the ring"></div></div>
+    <p class="note">${rp.n} in the ring, ${+(360/rp.n).toFixed(2)}° apart, counting the one you have. The faded shapes show where the copies will go.</p></div>
+    <div class="sec"><h3>Around</h3><div class="plist">${P.map(([v,l])=>`<button data-act="rppivot" data-arg="${v}" aria-pressed="${rp.pivot===v}">${l}</button>`).join('')}</div></div>
+    <div class="sec"><div class="btns">${T('rpturn',rp.turn,'Turn each copy')}${T('rpgroup',rp.group,'Group them')}</div>
+    <div class="btns"><button class="pbtn" data-act="rpapply">Make ${rp.n-1} cop${rp.n-1===1?'y':'ies'}</button><button data-act="rpcancel">Cancel</button></div></div>`;
+}
+
 // ---------- shape booleans ----------
 /* BOOL-START */
 function flatten(s){
@@ -1179,6 +1233,13 @@ function act(name,arg){
     case'keyfirst':keyId=sel[0];alignTo='key';break;
     case'keylast':keyId=sel[sel.length-1];alignTo='key';break;
     case'swap':{if(ss.length!==2)return;pushUndo();const[a,b]=ss;[a.x,b.x]=[b.x,a.x];[a.y,b.y]=[b.y,a.y];toast('Swapped positions');break}
+    case'rpopen':{if(!ss.some(s=>!s.locked))return;rp={...rpPrefs,ids:[...sel]};openTab('arrange');break}
+    case'rpn':rp.n=+arg;rpSave();break;
+    case'rppivot':rp.pivot=arg;rpSave();break;
+    case'rpturn':rp.turn=!rp.turn;rpSave();break;
+    case'rpgroup':rp.group=!rp.group;rpSave();break;
+    case'rpapply':return rpApply();
+    case'rpcancel':rp=null;break;
     case'rot90':{const rs=ss.filter(s=>!s.locked);if(!rs.length)return;pushUndo();const b=union(rs),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;
       rs.forEach(s=>{const p=rot(s.x-cx,s.y-cy,90);s.x=cx+p.x;s.y=cy+p.y;s.r=((s.r+90+180)%360+360)%360-180});break}
     case'flip':{const fl=ss.filter(s=>!s.locked);if(!fl.length)return;pushUndo();const b=union(fl),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;
@@ -1320,6 +1381,7 @@ function pEdit(){
 }
 function pArrange(){
   if(sb)return pBuilder();
+  if(rp)return pRepeat();
   if(ep)return pEdit();
   const ss=selShapes(),one=ss.length===1?ss[0]:null,n=ss.length;
   if(!n){
@@ -1338,7 +1400,7 @@ function pArrange(){
   const nShp=ss.filter(s=>s.type!=='text').length;
   if(n>=2)h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('bool','union','bunion','Combine',nShp<2)}${B('bool','cut','bcut','Cut out',nShp<2)}${B('bool','inter','binter','Intersect',nShp<2)}${B('bool','xor','bxor','Remove overlap',nShp<2)}</div><div class="btns">${B('sbstart','','bbuild','Shape builder',nShp<2)}</div>
     <p class="note">${nShp<2?'Select at least two shapes (text can’t be combined).':'Shape builder splits overlapping shapes into pieces you can join or remove by dragging. Cut out uses the bottom shape and removes everything stacked on top of it.'}</p></div>`;
-  else if(one&&one.type!=='text')h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('editpts','','bpts','Edit points')}${one.type==='path'?B('split','','bsplit','Split apart'):''}</div><p class="note">Tip: double-tap a shape to edit its points.</p></div>`;
+  else if(one&&one.type!=='text')h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('editpts','','bpts','Edit points')}${B('rpopen','','repeat','Repeat around')}${one.type==='path'?B('split','','bsplit','Split apart'):''}</div><p class="note">Tip: double-tap a shape to edit its points.</p></div>`;
   const hasG=ss.some(s=>s.g);
   if(n>=2||hasG)h+=`<div class="sec"><h3>Group</h3><div class="btns">${n>=2&&!oneGroup()?B('group','','bgroup','Group'):''}${hasG?B('ungroup','','bungroup','Ungroup'):''}</div>${oneGroup()?'<p class="note">Tap any part to pick up the whole group. Double-tap to work on one shape inside it.</p>':''}</div>`;
   if(one){const f=v=>Math.round(v);h+=`<div class="sec"><h3>Position &amp; size</h3><div class="num">
@@ -1445,6 +1507,7 @@ let editing=false;
 panel.addEventListener('input',e=>{
   const el=e.target,ss=selShapes();
   if(el.id==='bgop'&&doc.bgImg){if(!editing){pushUndo();editing=true}doc.bgImg.op=el.value/100;$('bgopv').textContent=el.value+'%';renderCanvas();return}
+  if(el.id==='rpnum'&&rp){const v=Math.round(parseFloat(el.value));if(v>=2&&v<=72){rp.n=v;rpSave();renderCanvas();const pb=panel.querySelector('[data-act="rpapply"]');if(pb)pb.textContent=`Make ${v-1} cop${v-1===1?'y':'ies'}`}return}
   if(el.id==='gap'){gapVal=parseFloat(el.value)||0;return}
   if(el.id==='gmar'){gmarVal=parseFloat(el.value)||0;return}
   if(el.id==='gsz'){const v=parseFloat(el.value);if(v>=2&&v<=2000){doc.grid.size=v;renderCanvas()}return}
@@ -1493,7 +1556,7 @@ $('bgfile').addEventListener('change',e=>{const f=e.target.files[0];e.target.val
   };
   img.onerror=()=>{URL.revokeObjectURL(url);toast('That file could not be opened as an image')};img.src=url;});
 $('epDone').onclick=()=>{if(sb)return sbFinish(true);if(ep&&ep.multi){ep.multi=false;renderAfterSel();return}exitEdit()};
-{const Q={'order:fwd':IC.qup,'order:bwd':IC.qdown,'flip:h':IC.fh,'flip:v':IC.fv,'dup:':IC.dup,'rot90:':IC.rot90,'group:':IC.bgroup,'ungroup:':IC.bungroup,'sbstart:':IC.bbuild};
+{const Q={'order:fwd':IC.qup,'order:bwd':IC.qdown,'flip:h':IC.fh,'flip:v':IC.fv,'dup:':IC.dup,'rot90:':IC.rot90,'rpopen:':IC.repeat,'group:':IC.bgroup,'ungroup:':IC.bungroup,'sbstart:':IC.bbuild};
  document.querySelectorAll('#qbar [data-qa]').forEach(b=>b.innerHTML=Q[b.dataset.qa+':'+(b.dataset.arg||'')]||'');
  const setQ=()=>{$('qbar').classList.toggle('closed',!qOpen);const t=$('qtoggle');t.innerHTML=IC.wrench;t.setAttribute('aria-expanded',qOpen);t.setAttribute('aria-label',qOpen?'Hide quick tools':'Show quick tools')};
  setQ();$('qtoggle').onclick=()=>{qOpen=!qOpen;try{localStorage.setItem('tessera.quick',qOpen?'1':'0')}catch(e){}setQ()};
