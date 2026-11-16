@@ -637,6 +637,9 @@ function snapTargets(axis,exclude,noGuides){
   if(SN.obj){T.push(0,L/2,L);doc.shapes.filter(s=>!exclude.includes(s.id)&&!s.hidden).forEach(s=>{const b=aabb(s);if(axis==='x')T.push(b.l,(b.l+b.r)/2,b.r);else T.push(b.t,(b.t+b.b)/2,b.b)});
     // a group's outer edges and centre count too, not just its members
     groupBoxes(exclude).forEach(b=>{if(axis==='x')T.push(b.l,(b.l+b.r)/2,b.r);else T.push(b.t,(b.t+b.b)/2,b.b)});
+    // halfway between the centres of any two other shapes, so a shape can sit exactly between two others
+    const cs=doc.shapes.filter(s=>!exclude.includes(s.id)&&!s.hidden).map(s=>{const b=aabb(s);return axis==='x'?(b.l+b.r)/2:(b.t+b.b)/2});
+    if(cs.length<=60)for(let i=0;i<cs.length;i++)for(let j=i+1;j<cs.length;j++)if(Math.abs(cs[i]-cs[j])>1)T.push((cs[i]+cs[j])/2);
     // background image edges when it is fitted inside the canvas
     const ib=bgRect();if(ib){if(axis==='x')T.push(ib.l,(ib.l+ib.r)/2,ib.r);else T.push(ib.t,(ib.t+ib.b)/2,ib.b)}}
   if(SN.guide&&doc.gopt.show&&!noGuides)doc.guides.filter(g=>g.axis===(axis==='x'?'v':'h')).forEach(g=>T.push(g.pos));
@@ -689,6 +692,9 @@ cv.addEventListener('pointerdown',e=>{
     if(h==='rot'){drag={mode:'rot',prev,s}}
     else{const[hx,hy]=h.split(',').map(Number);const a=rot(-hx*s.w/2,-hy*s.h/2,s.r);
       drag={mode:'resize',prev,s,hx,hy,A:{x:s.x+a.x,y:s.y+a.y},w0:s.w,h0:s.h}}
+  } else if(sEl&&!ep&&sel.length&&!sel.includes(sEl.dataset.id)&&!(multi||e.shiftKey)&&selShapes().some(s=>!s.locked)){
+    // a shape is already selected: dragging over another shape still moves the selected one; a plain tap picks the other shape
+    drag={mode:'move',prev,P0:P,starts:selShapes().filter(s=>!s.locked).map(s=>({s,x:s.x,y:s.y})),id:null,sx:e.clientX,sy:e.clientY,remote:true,tapId:sEl.dataset.id};
   } else if(sEl){
     const id=sEl.dataset.id,sh=byId(id);
     if(multi||e.shiftKey){const grp=expand([id]); if(sel.includes(id)){sel=sel.filter(x=>!grp.includes(x));renderAfterSel();return} sel=[...new Set([...sel,...grp])] }
@@ -834,7 +840,7 @@ function endPtr(e){
     if(!drag.tapId){if(!ep.multi){ep.sel=[];ep.si=null}}else if(drag.tapId!==ep.id){ep=null;sel=expand([drag.tapId])}
   }
   if(drag.changed&&drag.prev){pushUndo(drag.prev)}
-  if(drag.mode==='move'&&!drag.changed&&drag.remote){sel=[];inG=null}
+  if(drag.mode==='move'&&!drag.changed&&drag.remote){if(drag.tapId){const t=byId(drag.tapId);if(t&&t.g&&inG===t.g)sel=[t.id];else{inG=null;sel=expand([drag.tapId])}}else{sel=[];inG=null}}
   else if(drag.mode==='move'&&!drag.changed&&sel.length>1&&drag.id&&!multi&&!e.shiftKey&&!oneGroup()){
     keyId=drag.id;alignTo='key';const ks=byId(keyId);
     toast(`Key shape: ${shapeN(ks).toLowerCase()} — others align to it`);
