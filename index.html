@@ -1015,7 +1015,7 @@ function insertPoint(ci,k){
 // ---------- repeat around ----------
 let rp=null,rpPrefs={n:6,pivot:'near',turn:true,group:true};
 try{Object.assign(rpPrefs,JSON.parse(localStorage.getItem('tessera.repeat')||'{}'))}catch(e){}
-const rpSave=()=>{try{localStorage.setItem('tessera.repeat',JSON.stringify({n:rp.n,pivot:rp.pivot,turn:rp.turn,group:rp.group}))}catch(e){}};
+const rpSave=()=>{Object.assign(rpPrefs,{n:rp.n,pivot:rp.pivot,turn:rp.turn,group:rp.group});try{localStorage.setItem('tessera.repeat',JSON.stringify(rpPrefs))}catch(e){}};
 function rpNearest(){const ss=selShapes(),b=union(ss),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;let best=null,bd=Infinity;
   for(const o of doc.shapes){if(o.hidden||sel.includes(o.id))continue;const d=Math.hypot(o.x-cx,o.y-cy);if(d<bd){bd=d;best=o}}return best}
 function rpPivot(){
