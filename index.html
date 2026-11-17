@@ -457,7 +457,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='21';
+const APP_VERSION='22';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -856,10 +856,20 @@ cv.addEventListener('pointermove',e=>{
     const prop=(lockRatio||e.shiftKey||s.type==='text')&&hx&&hy;
     if(prop){const k=Math.max(w/w0,h/h0);w=w0*k;h=h0*k}
     sizeMatch={w:null,h:null};guides={x:null,y:null};let edgeX=false,edgeY=false;
-    if(snapOn&&Math.abs(s.r%90)<.01&&!prop){
+    if(snapOn&&Math.abs(s.r%90)<.01){
       const sx=Math.abs(s.r%180)<.01?1:0; // 90° rotations swap which world axis the box width lies on
-      if(hx){const ax=sx?'x':'y',p0=sx?A.x:A.y,dir=hx*(sx?Math.cos(rad(s.r)):Math.sin(rad(s.r)));const[adj,g]=bestSnap([p0+dir*w],snapTargets(ax,[s.id]));if(adj!=null&&Math.abs(g-p0)>6){w=Math.abs(g-p0);edgeX=true;guides[ax]=g}}
-      if(hy){const ax=sx?'y':'x',p0=sx?A.y:A.x,dir=hy*(sx?Math.cos(rad(s.r)):-Math.sin(rad(s.r)));const[adj,g]=bestSnap([p0+dir*h],snapTargets(ax,[s.id]));if(adj!=null&&Math.abs(g-p0)>6){h=Math.abs(g-p0);edgeY=true;guides[ax]=g}}
+      let sX=null,sY=null;
+      if(hx){const ax=sx?'x':'y',p0=sx?A.x:A.y,dir=hx*(sx?Math.cos(rad(s.r)):Math.sin(rad(s.r)));const[adj,g]=bestSnap([p0+dir*w],snapTargets(ax,[s.id]));if(adj!=null&&Math.abs(g-p0)>6)sX={v:Math.abs(g-p0),ax,g,d:Math.abs(adj)}}
+      if(hy){const ax=sx?'y':'x',p0=sx?A.y:A.x,dir=hy*(sx?Math.cos(rad(s.r)):-Math.sin(rad(s.r)));const[adj,g]=bestSnap([p0+dir*h],snapTargets(ax,[s.id]));if(adj!=null&&Math.abs(g-p0)>6)sY={v:Math.abs(g-p0),ax,g,d:Math.abs(adj)}}
+      if(prop){
+        // keeping proportions: the corner snaps on whichever side is closer, and the other side follows
+        const pick=sX&&(!sY||sX.d<=sY.d)?sX:sY;
+        if(pick===sX&&sX){const k=sX.v/w;w=sX.v;h*=k;edgeX=edgeY=true;guides[sX.ax]=sX.g}
+        else if(pick===sY&&sY){const k=sY.v/h;h=sY.v;w*=k;edgeX=edgeY=true;guides[sY.ax]=sY.g}
+      } else {
+        if(sX){w=sX.v;edgeX=true;guides[sX.ax]=sX.g}
+        if(sY){h=sY.v;edgeY=true;guides[sY.ax]=sY.g}
+      }
     }
     if(snapOn&&SN.obj){
       const cands=sizeCands([s.id]);
