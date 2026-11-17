@@ -174,7 +174,7 @@ select.tin{padding:8px 10px}
 .layers{display:grid;gap:4px}
 .bgrow{display:flex;gap:12px;align-items:center}
 .bgthumb{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:0 0 auto}
-.gr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:2px 4px}
+.gr{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:8px;padding:2px 4px}
 .gr .ga{font-size:13px;color:var(--muted);font-family:var(--f-mono)}
 .gr .ib{width:34px;height:34px}.gr .ib svg{width:18px;height:18px}
 .tabs button{font-size:14px}
@@ -387,6 +387,7 @@ const IC={
  minus:I('<path d="M5 12h14"/>'),
  repeat:I('<circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="4.5" r="2.2"/><circle cx="18.5" cy="8.3" r="2.2"/><circle cx="18.5" cy="15.7" r="2.2"/><circle cx="12" cy="19.5" r="2.2"/><circle cx="5.5" cy="15.7" r="2.2"/><circle cx="5.5" cy="8.3" r="2.2"/>'),
  bookmark:I('<path d="M7 3h10a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z"/><path d="M12 7v6M9 10h6"/>'),
+ gang:I('<path d="M4 20 20 6" /><path d="M4 20h16" stroke-opacity=".5"/><path d="M11 20a7 7 0 0 0-1.6-4.4" />'),
  bsplit:I('<path d="M4 4h7v7H4zM13 13h7v7h-7z" fill="currentColor" fill-opacity=".3"/><path d="M14 4l6 6M20 4l-6 6" stroke-opacity=".5"/>'),
  ratio:I('<rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M8 10h3M13 14h3"/>'),
  file:I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>'), fit:I('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
@@ -457,7 +458,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='22';
+const APP_VERSION='23';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -570,17 +571,42 @@ function gridSVG(){
   mj.setAttribute('width',gs*5);mj.setAttribute('height',gs*5);mj.firstElementChild.setAttribute('d',`M${gs*5} 0H0V${gs*5}`);mj.firstElementChild.setAttribute('stroke-width',1.3*k);
   return (gs*view.s>=6?`<rect width="${W}" height="${H}" fill="url(#grid)" pointer-events="none"/>`:'')+`<rect width="${W}" height="${H}" fill="url(#gridM)" pointer-events="none"/>`;
 }
+// Guides can be vertical (v), horizontal (h) or angled (a: a line through x,y at ang degrees, measured anticlockwise)
+let gFocus=null,angHit=null,gAngDef=30;
+const gDir=g=>{const a=rad(g.ang);return{x:Math.cos(a),y:-Math.sin(a)}};
+function gAnchor(g){if(g.axis==='a')return{x:g.x,y:g.y};const c=visibleCenter();return g.axis==='v'?{x:g.pos,y:c.y}:{x:c.x,y:g.pos}}
+function toAngled(g){if(g.axis==='a')return;const a=gAnchor(g);g.ang=g.axis==='v'?90:0;g.x=a.x;g.y=a.y;g.axis='a';delete g.pos}
+function normGuide(g){if(g.axis!=='a')return;const a=((g.ang%180)+180)%180;g.ang=a;
+  if(a<.05||a>179.95){g.axis='h';g.pos=g.y}else if(Math.abs(a-90)<.05){g.axis='v';g.pos=g.x}else return;delete g.x;delete g.y;delete g.ang}
+const angGuides=()=>snapOn&&SN.guide&&doc.gopt.show?doc.guides.filter(g=>g.axis==='a'):[];
+function angSnap(pts,lockX,lockY){
+  // snap points onto angled guides; if one axis is already snapped, slide only along the other so both hold
+  if(lockX&&lockY)return null;const thr=8/view.s;let best=null;
+  for(const g of angGuides()){const d=gDir(g),nx=-d.y,ny=d.x;
+    for(const p of pts){const off=(p.x-g.x)*nx+(p.y-g.y)*ny;let dx,dy;
+      if(lockX){if(Math.abs(ny)<1e-6)continue;dx=0;dy=-off/ny}
+      else if(lockY){if(Math.abs(nx)<1e-6)continue;dx=-off/nx;dy=0}
+      else{dx=-off*nx;dy=-off*ny}
+      const dist=Math.hypot(dx,dy);if(dist<thr&&(!best||dist<best.dist))best={dx,dy,dist,id:g.id}}}
+  return best;
+}
 function guidesSVG(){
   if(!doc.gopt.show||!doc.guides.length)return'';
-  const k=1/view.s,C='#139fcf';let o='';
+  const k=1/view.s,C='#139fcf',PK='#e0457b';let o='';
   for(const g of doc.guides){
-    const v=g.axis==='v',act=guideDrag===g;
-    const ln=v?`x1="${g.pos}" x2="${g.pos}" y1="-100000" y2="100000"`:`y1="${g.pos}" y2="${g.pos}" x1="-100000" x2="100000"`;
-    o+=`<line ${ln} stroke="${C}" stroke-width="${(act?1.8:1.2)*k}" pointer-events="none"/>`;
-    if(!doc.gopt.lock)o+=`<line ${ln} stroke="transparent" stroke-width="${18*k}" data-g="${g.id}" pointer-events="stroke" style="cursor:${v?'ew-resize':'ns-resize'}"/>`;
-    if(act){const lab=Math.round(g.pos),lx=v?g.pos:-28*k,ly=v?-16*k:g.pos;
+    const v=g.axis==='v',an=g.axis==='a',act=guideDrag===g,hit=angHit===g.id,foc=gFocus===g.id;
+    let ln;if(an){const d=gDir(g),L=100000;ln=`x1="${g.x-d.x*L}" y1="${g.y-d.y*L}" x2="${g.x+d.x*L}" y2="${g.y+d.y*L}"`}
+    else ln=v?`x1="${g.pos}" x2="${g.pos}" y1="-100000" y2="100000"`:`y1="${g.pos}" y2="${g.pos}" x1="-100000" x2="100000"`;
+    o+=`<line ${ln} stroke="${hit?PK:C}" stroke-width="${(act||hit||foc?1.9:1.2)*k}" pointer-events="none"/>`;
+    if(!doc.gopt.lock)o+=`<line ${ln} stroke="transparent" stroke-width="${18*k}" data-g="${g.id}" pointer-events="stroke" style="cursor:${an?'move':v?'ew-resize':'ns-resize'}"/>`;
+    if(act&&an){const lab=Math.round(g.ang*10)/10;o+=`<g pointer-events="none"><rect x="${g.x+14*k}" y="${g.y-30*k}" width="${52*k}" height="${18*k}" rx="${9*k}" fill="${C}"/><text x="${g.x+40*k}" y="${g.y-21*k}" font-size="${11*k}" fill="#fff" text-anchor="middle" dominant-baseline="central" font-family="JetBrains Mono, monospace">${lab}°</text></g>`}
+    else if(act){const lab=Math.round(g.pos),lx=v?g.pos:-28*k,ly=v?-16*k:g.pos;
       o+=`<g pointer-events="none"><rect x="${lx-24*k}" y="${ly-9*k}" width="${48*k}" height="${18*k}" rx="${9*k}" fill="${C}"/><text x="${lx}" y="${ly}" font-size="${11*k}" fill="#fff" text-anchor="middle" dominant-baseline="central" font-family="JetBrains Mono, monospace">${lab}</text></g>`}
   }
+  // the guide you tapped gets a turning handle
+  const fg=gFocus&&!doc.gopt.lock&&doc.guides.find(x=>x.id===gFocus);
+  if(fg){const a=gAnchor(fg),d=gDir({ang:fg.axis==='a'?fg.ang:fg.axis==='v'?90:0}),r=72*k,kx=a.x+d.x*r,ky=a.y+d.y*r;
+    o+=`<g pointer-events="none"><circle cx="${a.x}" cy="${a.y}" r="${4.5*k}" fill="${C}"/><line x1="${a.x}" y1="${a.y}" x2="${kx}" y2="${ky}" stroke="${C}" stroke-width="${1.5*k}" stroke-dasharray="${4*k} ${3*k}"/><circle cx="${kx}" cy="${ky}" r="${9*k}" fill="#fff" stroke="${C}" stroke-width="${2.2*k}"/><path d="M${kx-4*k} ${ky}a${4*k} ${4*k} 0 1 1 ${4*k} ${4*k}" fill="none" stroke="${C}" stroke-width="${1.5*k}"/></g><circle cx="${kx}" cy="${ky}" r="${20*k}" fill="transparent" data-grot="${fg.id}" style="cursor:grab"/>`}
   return o;
 }
 function bgImgSVG(exp){
@@ -733,7 +759,10 @@ cv.addEventListener('pointerdown',e=>{
       drag={mode:'node',prev,s,c:ep.si[0],i:ep.si[1],rel:true,P0:P,w0:worldOf(s,n.x,n.y),sx:e.clientX,sy:e.clientY,tapId:sEl?sEl.dataset.id:null};return}
     if(!sEl||sEl.dataset.id!==ep.id){ if(!sEl){drag={mode:'epempty'};return} ep=null; }
   }
-  if(gEl&&!hEl){const g=doc.guides.find(x=>x.id===gEl.dataset.g);if(g){drag={mode:'guide',prev,g};guideDrag=g;renderCanvas();return}}
+  const grEl=e.target.closest('[data-grot]');
+  if(!grEl&&!gEl)gFocus=null;
+  if(grEl){const g=doc.guides.find(x=>x.id===grEl.dataset.grot);if(g){toAngled(g);drag={mode:'grotate',prev,g};guideDrag=g;renderCanvas();return}}
+  if(gEl&&!hEl){const g=doc.guides.find(x=>x.id===gEl.dataset.g);if(g){drag={mode:'guide',prev,g,P0:P,x0:g.x,y0:g.y,sx:e.clientX,sy:e.clientY};guideDrag=g;renderCanvas();return}}
   if(hEl&&sel.length>1){
     const ss=selShapes(),b=union(ss),h=hEl.dataset.h,starts=ss.map(s=>({s,x:s.x,y:s.y,w:s.w,h:s.h,r:s.r}));
     if(h==='rot'){const C={x:(b.l+b.r)/2,y:(b.t+b.b)/2};drag={mode:'grot',prev,C,a0:Math.atan2(P.y-C.y,P.x-C.x),starts}}
@@ -773,7 +802,7 @@ cv.addEventListener('pointermove',e=>{
   if(drag.mode==='move'){
     let dx=P.x-drag.P0.x, dy=P.y-drag.P0.y;
     if(Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<3&&!drag.changed)return;
-    drag.changed=true; guides={x:null,y:null}; polarGuide=null;
+    drag.changed=true; guides={x:null,y:null}; polarGuide=null; angHit=null;
     const rdx=dx,rdy=dy;
     if(snapOn&&drag.starts.length){
       const moved=drag.starts.map(o=>({...o.s,x:o.x+dx,y:o.y+dy}));const b=union(moved);
@@ -782,6 +811,9 @@ cv.addEventListener('pointermove',e=>{
       // circles also snap around other circles: edge through a centre, touching edges, at 15° steps
       const pol=drag.starts.length===1&&SN.obj?polarSnap(drag.starts[0],rdx,rdy):null;
       if(pol){dx=pol.dx;dy=pol.dy;guides={x:null,y:null};polarGuide=pol.g}
+      else{const b2=union(drag.starts.map(o=>({...o.s,x:o.x+dx,y:o.y+dy})));
+        const as=angSnap([{x:(b2.l+b2.r)/2,y:(b2.t+b2.b)/2},{x:b2.l,y:b2.t},{x:b2.r,y:b2.t},{x:b2.l,y:b2.b},{x:b2.r,y:b2.b}],guides.x!=null,guides.y!=null);
+        if(as){dx+=as.dx;dy+=as.dy;angHit=as.id}}
     }
     drag.starts.forEach(o=>{o.s.x=o.x+dx;o.s.y=o.y+dy});
     renderCanvas();return;
@@ -801,6 +833,7 @@ cv.addEventListener('pointermove',e=>{
       const tx=snapTargets('x',[s.id]),ty=snapTargets('y',[s.id]);
       ep.cs.forEach(c=>c.forEach(m=>{if(!grp.includes(m)){const w=worldOf(s,m.x,m.y);tx.push(w.x);ty.push(w.y)}}));
       const[ax,gx]=bestSnap([Q.x],tx),[ay,gy]=bestSnap([Q.y],ty);if(ax!=null){Q.x+=ax;guides.x=gx}if(ay!=null){Q.y+=ay;guides.y=gy}
+      angHit=null;const as=angSnap([Q],guides.x!=null,guides.y!=null);if(as){Q.x+=as.dx;Q.y+=as.dy;angHit=as.id}
     }
     const U=unitOf(s,Q);
     if(drag.mode==='node'){const dx=U.u-n.x,dy=U.v-n.y;grp.forEach(m=>{for(const k of['x','ix','ox'])m[k]+=dx;for(const k of['y','iy','oy'])m[k]+=dy})}
@@ -840,7 +873,16 @@ cv.addEventListener('pointermove',e=>{
     starts.forEach(o=>{const p=rot(o.x-C.x,o.y-C.y,d);o.s.x=C.x+p.x;o.s.y=C.y+p.y;o.s.r=Math.round((((o.r+d)%360)+540)%360*10)/10-180});
     drag.changed=true;renderCanvas();return;
   }
+  if(drag.mode==='grotate'){
+    const g=drag.g;let a=Math.atan2(-(P.y-g.y),P.x-g.x)*180/Math.PI;a=((a%180)+180)%180;
+    if(e.shiftKey)a=Math.round(a/15)*15;else{const r=Math.round(a/15)*15;if(Math.abs(r-a)<4)a=r}
+    g.ang=Math.round(a*10)/10%180;drag.changed=true;renderCanvas();return;
+  }
   if(drag.mode==='guide'){
+    if(!drag.changed&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<3)return;
+    if(drag.g.axis==='a'){const g=drag.g;let nx=drag.x0+P.x-drag.P0.x,ny=drag.y0+P.y-drag.P0.y;
+      if(snapOn){const[ax]=bestSnap([nx],snapTargets('x',[],true)),[ay]=bestSnap([ny],snapTargets('y',[],true));if(ax!=null)nx+=ax;if(ay!=null)ny+=ay}
+      g.x=Math.round(nx*10)/10;g.y=Math.round(ny*10)/10;drag.changed=true;renderCanvas();return}
     const g=drag.g,v=g.axis==='v';let pos=v?P.x:P.y;
     if(snapOn){const[adj]=bestSnap([pos],snapTargets(v?'x':'y',[],true));if(adj!=null)pos+=adj}
     g.pos=Math.round(pos*10)/10;drag.changed=true;renderCanvas();return;
@@ -896,7 +938,11 @@ function endPtr(e){
   if(pinch){if(ptrs.size<2)pinch=null;return}
   if(!drag)return;
   if(drag.mode==='sb'){drag=null;sbApply();renderAfterSel();return}
-  if(drag.mode==='guide'){const g=drag.g,L=g.axis==='v'?W:H;guideDrag=null;if(g.pos<-L*.03||g.pos>L*1.03){doc.guides=doc.guides.filter(x=>x!==g);toast('Guide removed')}}
+  if(drag.mode==='guide'||drag.mode==='grotate'){const g=drag.g;guideDrag=null;
+    if(!drag.changed)gFocus=g.id; // a tap shows the turning handle
+    else if(drag.mode==='guide'){const out=g.axis==='a'?(g.x<-W*.03||g.x>W*1.03||g.y<-H*.03||g.y>H*1.03):(g.pos<-(g.axis==='v'?W:H)*.03||g.pos>(g.axis==='v'?W:H)*1.03);
+      if(out){doc.guides=doc.guides.filter(x=>x!==g);gFocus=null;toast('Guide removed')}}
+    if(drag.mode==='grotate'){normGuide(g);gAngDef=g.axis==='a'?g.ang:gAngDef;gFocus=g.id}}
   if((drag.mode==='node'||drag.mode==='hd')&&drag.changed&&ep){normalisePts(drag.s,ep.cs)}
   if(drag.mode==='node'&&drag.toggle&&!drag.changed&&ep){
     // tapping a point that was already picked (while selecting several) lets go of it
@@ -921,7 +967,7 @@ function endPtr(e){
     if(lastTap.id===drag.id&&now-lastTap.t<380){onDoubleTap(drag.id);lastTap={id:null,t:0}} else lastTap={id:drag.id,t:now};
   }
   const wasMarq=drag.mode==='marq';
-  drag=null;guides={x:null,y:null};marq=null;sizeMatch={w:null,h:null};polarGuide=null;
+  drag=null;guides={x:null,y:null};marq=null;sizeMatch={w:null,h:null};polarGuide=null;angHit=null;
   if(wasMarq&&sel.length>1&&!multi)toast(`${sel.length} shapes selected`);
   refresh();
 }
@@ -1338,7 +1384,8 @@ function act(name,arg){
     case'gsize':doc.grid.size=+arg;doc.grid.show=true;break;
     case'gshow':doc.gopt.show=!doc.gopt.show;break;
     case'glock':doc.gopt.lock=!doc.gopt.lock;break;
-    case'gadd':{pushUndo();const c=visibleCenter();let p=arg==='v'?c.x:c.y,n=0;while(!addGuide(arg,p+n*20)&&n<50)n++;doc.gopt.show=true;toast(`${arg==='v'?'Vertical':'Horizontal'} guide added — drag it into place`);break}
+    case'gadd':{if(arg==='a'){pushUndo();const c=visibleCenter(),g={id:gid(),axis:'a',x:Math.round(c.x),y:Math.round(c.y),ang:gAngDef};doc.guides.push(g);doc.gopt.show=true;gFocus=g.id;toast(`Angled guide added at ${gAngDef}°. Drag the round handle to turn it`);break}
+      pushUndo();const c=visibleCenter();let p=arg==='v'?c.x:c.y,n=0;while(!addGuide(arg,p+n*20)&&n<50)n++;doc.gopt.show=true;toast(`${arg==='v'?'Vertical':'Horizontal'} guide added — drag it into place`);break}
     case'gpre':{pushUndo();let n=0;const m=gmarVal??Math.round(Math.min(W,H)*.05);
       const L=arg==='centre'?[['v',W/2],['h',H/2]]:arg==='thirds'?[['v',W/3],['v',2*W/3],['h',H/3],['h',2*H/3]]:[['v',m],['v',W-m],['h',m],['h',H-m]];
       L.forEach(([a,p])=>n+=addGuide(a,p));doc.gopt.show=true;toast(n?`Added ${n} guide${n>1?'s':''}`:'Those guides are already there');break}
@@ -1495,15 +1542,16 @@ function pGrid(){
   h+=`<div class="sec"><h3>Grid</h3><div class="btns">${P('gridshow','',doc.grid.show,'Show grid')}</div>
     <div class="row"><div class="seg" role="group">${[10,20,25,50,100].map(v=>`<button data-act="gsize" data-arg="${v}" aria-pressed="${doc.grid.size===v}">${v}</button>`).join('')}</div>
     <div class="num" style="grid-template-columns:76px;flex:0 0 auto"><input type="number" inputmode="numeric" id="gsz" value="${doc.grid.size}" aria-label="Grid size in px"></div><span class="note">px · heavier line every 5</span></div></div>`;
-  h+=`<div class="sec"><h3>Guides</h3><div class="btns"><button data-act="gadd" data-arg="v">${IC.dh}<span>Add vertical</span></button><button data-act="gadd" data-arg="h">${IC.dv}<span>Add horizontal</span></button>
+  h+=`<div class="sec"><h3>Guides</h3><div class="btns"><button data-act="gadd" data-arg="v">${IC.dh}<span>Add vertical</span></button><button data-act="gadd" data-arg="h">${IC.dv}<span>Add horizontal</span></button><button data-act="gadd" data-arg="a">${IC.gang}<span>Add angled</span></button>
       <button data-act="gpre" data-arg="centre">Centre lines</button><button data-act="gpre" data-arg="thirds">Thirds</button><button data-act="gsel" ${sel.length?'':'disabled'}>Around selection</button></div>
     <div class="row"><button class="pbtn" data-act="gpre" data-arg="margin" style="padding:8px 12px">Margins</button><div class="num" style="grid-template-columns:76px;flex:0 0 auto"><input type="number" inputmode="numeric" id="gmar" value="${mar}" aria-label="Margin in px"></div><span class="note">px in from each edge</span></div>
     <div class="btns">${P('gshow','',doc.gopt.show,'Show guides')}${P('glock','',doc.gopt.lock,'Lock guides')}<button data-act="gclear" ${doc.guides.length?'':'disabled'}>Clear all</button></div>
-    <p class="note">Drag a guide on the canvas to move it, or drag it off the canvas to remove it.</p></div>`;
+    <p class="note">Drag a guide to move it, or drag it off the canvas to remove it. Tap a guide to show its round turning handle; it clicks into 15° steps. Shapes and points snap to angled guides too.</p></div>`;
   if(doc.guides.length){
-    const gs=[...doc.guides].sort((a,b)=>a.axis.localeCompare(b.axis)||a.pos-b.pos);
-    h+=`<div class="sec"><h3>${gs.length} guide${gs.length>1?'s':''}</h3><div class="layers">`+gs.map(g=>`<div class="gr"><span class="ga">${g.axis==='v'?'│ Vertical':'— Horizontal'}</span>
-      <div class="num" style="grid-template-columns:90px"><input type="number" inputmode="decimal" data-gp="${g.id}" value="${Math.round(g.pos*10)/10}" aria-label="Guide position"></div>
+    const gs=[...doc.guides].sort((a,b)=>a.axis.localeCompare(b.axis)||((a.pos??a.ang)-(b.pos??b.ang)));
+    h+=`<div class="sec"><h3>${gs.length} guide${gs.length>1?'s':''}</h3><div class="layers">`+gs.map(g=>`<div class="gr"><span class="ga">${g.axis==='a'?'∠ Angled':g.axis==='v'?'│ Vertical':'— Horizontal'}</span>
+      ${g.axis==='a'?'<span></span>':`<div class="num" style="grid-template-columns:76px"><input type="number" inputmode="decimal" data-gp="${g.id}" value="${Math.round(g.pos*10)/10}" aria-label="Guide position"></div>`}
+      <div class="num" style="grid-template-columns:66px"><label style="display:flex;align-items:center;gap:4px">∠<input type="number" inputmode="decimal" data-gang="${g.id}" value="${g.axis==='a'?Math.round(g.ang*10)/10:g.axis==='v'?90:0}" aria-label="Guide angle in degrees"></label></div>
       <button class="ib" data-act="gdel" data-arg="${g.id}" aria-label="Remove guide" title="Remove guide">${IC.del}</button></div>`).join('')+`</div></div>`;
   }
   return h;
@@ -1558,6 +1606,7 @@ panel.addEventListener('input',e=>{
   if(el.id==='gap'){gapVal=parseFloat(el.value)||0;return}
   if(el.id==='gmar'){gmarVal=parseFloat(el.value)||0;return}
   if(el.id==='gsz'){const v=parseFloat(el.value);if(v>=2&&v<=2000){doc.grid.size=v;renderCanvas()}return}
+  if(el.dataset.gang){const g=doc.guides.find(x=>x.id===el.dataset.gang),v=parseFloat(el.value);if(!g||isNaN(v))return;if(!editing){pushUndo();editing=true}toAngled(g);g.ang=((v%180)+180)%180;gFocus=g.id;renderCanvas();return}
   if(el.dataset.gp){const g=doc.guides.find(x=>x.id===el.dataset.gp),v=parseFloat(el.value);if(!g||isNaN(v))return;if(!editing){pushUndo();editing=true}g.pos=v;renderCanvas();return}
   if(el.id==='cw'){pendW=parseFloat(el.value)||null;return}
   if(el.id==='ch'){pendH=parseFloat(el.value)||null;return}
@@ -1574,6 +1623,7 @@ panel.addEventListener('input',e=>{
   renderCanvas();
 });
 panel.addEventListener('change',e=>{
+  if(e.target.dataset.gang){const g=doc.guides.find(x=>x.id===e.target.dataset.gang);if(g){normGuide(g);gAngDef=g.axis==='a'?g.ang:gAngDef}editing=false;save();renderPanel();renderCanvas();return}
   const ss=selShapes();
   if(e.target.id==='font'&&ss[0]){pushUndo();ss[0].font=e.target.value}
   editing=false;save();renderTop();
