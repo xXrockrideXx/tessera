@@ -161,6 +161,16 @@ select.tin{padding:8px 10px}
 .plist{display:grid;gap:4px}
 .plist button{text-align:left;padding:10px 12px;border-radius:10px;background:var(--sunk);font-size:14px}
 .plist button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.mylib{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
+.stile{position:relative;display:grid;gap:4px;min-width:0}
+.sthumb{aspect-ratio:1;border-radius:10px;background:var(--sunk);display:grid;place-items:center;padding:8px;transition:transform .12s}
+.sthumb:active{transform:scale(.94)}
+.sthumb svg,.strip .sv svg,.sprev svg{width:100%;height:100%}
+.sname{font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.smore{position:absolute;top:2px;right:2px;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:var(--muted);background:var(--panel);opacity:.9}
+.smore svg{width:16px;height:16px}
+.strip .sv{padding:6px}
+.sprev{height:120px;display:grid;place-items:center;background:var(--sunk);border-radius:12px;padding:12px}
 .layers{display:grid;gap:4px}
 .bgrow{display:flex;gap:12px;align-items:center}
 .bgthumb{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:0 0 auto}
@@ -263,6 +273,7 @@ select.tin{padding:8px 10px}
         <button data-qa="flip" data-arg="h" title="Mirror left to right (Shift+H)" aria-label="Mirror left to right"></button>
         <button data-qa="flip" data-arg="v" title="Flip top to bottom (Shift+V)" aria-label="Flip top to bottom"></button>
         <button data-qa="dup" title="Duplicate" aria-label="Duplicate"></button>
+        <button data-qa="savesel" title="Save shape to My shapes" aria-label="Save shape to My shapes"></button>
         <button data-qa="rpopen" title="Repeat around" aria-label="Repeat around"></button>
         <button data-qa="rot90" title="Rotate 90° clockwise" aria-label="Rotate 90 degrees clockwise"></button>
         <button data-qa="group" id="qGroup" title="Group (Ctrl+G)" aria-label="Group"></button>
@@ -375,6 +386,7 @@ const IC={
  ptAll:I('<path d="M12 4 20 18H4z" stroke-dasharray="2.5 2"/><circle cx="12" cy="4" r="2" fill="currentColor"/><circle cx="20" cy="18" r="2" fill="currentColor"/><circle cx="4" cy="18" r="2" fill="currentColor"/>'),
  minus:I('<path d="M5 12h14"/>'),
  repeat:I('<circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="4.5" r="2.2"/><circle cx="18.5" cy="8.3" r="2.2"/><circle cx="18.5" cy="15.7" r="2.2"/><circle cx="12" cy="19.5" r="2.2"/><circle cx="5.5" cy="15.7" r="2.2"/><circle cx="5.5" cy="8.3" r="2.2"/>'),
+ bookmark:I('<path d="M7 3h10a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z"/><path d="M12 7v6M9 10h6"/>'),
  bsplit:I('<path d="M4 4h7v7H4zM13 13h7v7h-7z" fill="currentColor" fill-opacity=".3"/><path d="M14 4l6 6M20 4l-6 6" stroke-opacity=".5"/>'),
  ratio:I('<rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M8 10h3M13 14h3"/>'),
  file:I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>'), fit:I('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
@@ -445,7 +457,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='20';
+const APP_VERSION='21';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -1250,6 +1262,7 @@ function act(name,arg){
     case'keyfirst':keyId=sel[0];alignTo='key';break;
     case'keylast':keyId=sel[sel.length-1];alignTo='key';break;
     case'swap':{if(ss.length!==2)return;pushUndo();const[a,b]=ss;[a.x,b.x]=[b.x,a.x];[a.y,b.y]=[b.y,a.y];toast('Swapped positions');break}
+    case'savesel':return saveSelection();
     case'rpopen':{if(!ss.some(s=>!s.locked))return;rp={...rpPrefs,ids:[...sel]};openTab('arrange');break}
     case'rpn':rp.n=+arg;rpSave();break;
     case'rppivot':rp.pivot=arg;rpSave();break;
@@ -1339,10 +1352,13 @@ function applyColor(c){
 // ---------- panels ----------
 const thumb=(type,size=32)=>{const a=DEF[type]?.a||1;const w=a>=1?size:size*a,h=a>=1?size/a:size;return `<svg viewBox="-20 -20 40 40"><path d="${scaleD(DEF[type].d,w,h)}" fill-rule="evenodd" fill="currentColor"/></svg>`};
 function pShapes(){
-  if(collapsed&&!wide()){let h='<div class="strip"><button data-add="text" title="Text" aria-label="Add text"><span class="txt">Aa</span></button>';
+  if(collapsed&&!wide()){let h='<div class="strip">'+saved.map(it=>`<button data-addsaved="${it.id}" title="${esc(it.name)}" aria-label="Add ${esc(it.name)}" class="sv">${savedSVG(it)}</button>`).join('')+'<button data-add="text" title="Text" aria-label="Add text"><span class="txt">Aa</span></button>';
     for(const g in LIB)for(const k in LIB[g])h+=`<button data-add="${k}" title="${LIB[g][k].n}" aria-label="Add ${LIB[g][k].n}">${thumb(k)}</button>`;
     return h+'</div>'}
-  let h='';
+  let h=`<div class="sec"><h3>My shapes</h3>`;
+  h+=saved.length?`<div class="mylib">${saved.map(it=>`<div class="stile"><button class="sthumb" data-addsaved="${it.id}" title="Add ${esc(it.name)}" aria-label="Add ${esc(it.name)}">${savedSVG(it)}</button><span class="sname">${esc(it.name)}</span><button class="smore" data-smore="${it.id}" aria-label="Options for ${esc(it.name)}">${IC.more}</button></div>`).join('')}</div>`
+    :`<p class="note">Select a shape or a few together, then tap <b>Save shape</b> in the quick menu to keep it here.</p>`;
+  h+='</div>';
   for(const g in LIB){h+=`<div class="sec"><h3>${g}</h3><div class="lib">`;
     if(g==='Basic')h+=`<button data-add="text" title="Text" aria-label="Add text"><span class="txt">Aa</span></button>`;
     for(const k in LIB[g])h+=`<button data-add="${k}" title="${LIB[g][k].n}" aria-label="Add ${LIB[g][k].n}">${thumb(k)}</button>`;
@@ -1415,9 +1431,9 @@ function pArrange(){
   const B=(a,arg,ic,label,dis)=>`<button data-act="${a}" data-arg="${arg||''}" ${dis?'disabled':''} title="${label}">${IC[ic]}<span>${label}</span></button>`;
   let h='';
   const nShp=ss.filter(s=>s.type!=='text').length;
-  if(n>=2)h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('bool','union','bunion','Combine',nShp<2)}${B('bool','cut','bcut','Cut out',nShp<2)}${B('bool','inter','binter','Intersect',nShp<2)}${B('bool','xor','bxor','Remove overlap',nShp<2)}</div><div class="btns">${B('sbstart','','bbuild','Shape builder',nShp<2)}</div>
+  if(n>=2)h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('bool','union','bunion','Combine',nShp<2)}${B('bool','cut','bcut','Cut out',nShp<2)}${B('bool','inter','binter','Intersect',nShp<2)}${B('bool','xor','bxor','Remove overlap',nShp<2)}</div><div class="btns">${B('sbstart','','bbuild','Shape builder',nShp<2)}${B('savesel','','bookmark','Save shapes together')}</div>
     <p class="note">${nShp<2?'Select at least two shapes (text can’t be combined).':'Shape builder splits overlapping shapes into pieces you can join or remove by dragging. Cut out uses the bottom shape and removes everything stacked on top of it.'}</p></div>`;
-  else if(one&&one.type!=='text')h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('editpts','','bpts','Edit points')}${B('rpopen','','repeat','Repeat around')}${one.type==='path'?B('split','','bsplit','Split apart'):''}</div><p class="note">Tip: double-tap a shape to edit its points.</p></div>`;
+  else if(one&&one.type!=='text')h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('editpts','','bpts','Edit points')}${B('rpopen','','repeat','Repeat around')}${B('savesel','','bookmark','Save shape')}${one.type==='path'?B('split','','bsplit','Split apart'):''}</div><p class="note">Tip: double-tap a shape to edit its points.</p></div>`;
   const hasG=ss.some(s=>s.g);
   if(n>=2||hasG)h+=`<div class="sec"><h3>Group</h3><div class="btns">${n>=2&&!oneGroup()?B('group','','bgroup','Group'):''}${hasG?B('ungroup','','bungroup','Ungroup'):''}</div>${oneGroup()?'<p class="note">Tap any part to pick up the whole group. Double-tap to work on one shape inside it.</p>':''}</div>`;
   if(one){const f=v=>Math.round(v);h+=`<div class="sec"><h3>Position &amp; size</h3><div class="num">
@@ -1513,6 +1529,10 @@ $('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if
  h.addEventListener('pointerup',()=>{if(y0!=null&&!moved)setCollapsed(!collapsed);y0=null});
  h.addEventListener('pointercancel',()=>{y0=null});}
 panel.addEventListener('click',e=>{
+  const sv=e.target.closest('[data-addsaved]');if(sv)return addSaved(sv.dataset.addsaved);
+  const sm=e.target.closest('[data-smore]');if(sm)return savedSheet(sm.dataset.smore);
+});
+panel.addEventListener('click',e=>{
   const t=e.target.closest('[data-add],[data-col],[data-st],[data-act],[data-pick]');if(!t||t.disabled)return;
   if(t.dataset.add)return addShape(t.dataset.add);
   if(t.dataset.col)return applyColor(t.dataset.col);
@@ -1573,7 +1593,7 @@ $('bgfile').addEventListener('change',e=>{const f=e.target.files[0];e.target.val
   };
   img.onerror=()=>{URL.revokeObjectURL(url);toast('That file could not be opened as an image')};img.src=url;});
 $('epDone').onclick=()=>{if(sb)return sbFinish(true);if(ep&&ep.multi){ep.multi=false;renderAfterSel();return}exitEdit()};
-{const Q={'order:fwd':IC.qup,'order:bwd':IC.qdown,'flip:h':IC.fh,'flip:v':IC.fv,'dup:':IC.dup,'rot90:':IC.rot90,'rpopen:':IC.repeat,'group:':IC.bgroup,'ungroup:':IC.bungroup,'sbstart:':IC.bbuild};
+{const Q={'order:fwd':IC.qup,'order:bwd':IC.qdown,'flip:h':IC.fh,'flip:v':IC.fv,'dup:':IC.dup,'rot90:':IC.rot90,'rpopen:':IC.repeat,'savesel:':IC.bookmark,'group:':IC.bgroup,'ungroup:':IC.bungroup,'sbstart:':IC.bbuild};
  document.querySelectorAll('#qbar [data-qa]').forEach(b=>b.innerHTML=Q[b.dataset.qa+':'+(b.dataset.arg||'')]||'');
  const setQ=()=>{$('qbar').classList.toggle('closed',!qOpen);const t=$('qtoggle');t.innerHTML=IC.wrench;t.setAttribute('aria-expanded',qOpen);t.setAttribute('aria-label',qOpen?'Hide quick tools':'Show quick tools')};
  setQ();$('qtoggle').onclick=()=>{qOpen=!qOpen;try{localStorage.setItem('tessera.quick',qOpen?'1':'0')}catch(e){}setQ()};
@@ -1650,6 +1670,54 @@ addEventListener('keydown',e=>{
   if(ar&&sel.length){e.preventDefault();pushUndo();const st=e.shiftKey?10:1;selShapes().forEach(s=>{s.x+=ar[0]*st;s.y+=ar[1]*st});refresh()}
 });
 addEventListener('keyup',e=>{if(e.key===' ')spaceDown=false});
+
+// ---------- saved shapes ----------
+// Your own shapes and symbols, kept on this device (and in backups), added from Shapes like any built-in shape.
+let saved=[];
+const RJ_SEED={id:'seed-rj',name:'rj logo',w:200,h:400,shapes:[{type:'path',name:'rj logo',pd:'M0.00000,0.66107 L0.00000,0.25000 C0.00000,0.16068 0.09530,0.07815 0.25000,0.03349 C0.40470,-0.01117 0.59531,-0.01116 0.75001,0.03350 L0.68245,0.15955 C0.61231,0.12210 0.50354,0.10989 0.40812,0.12875 C0.31269,0.14760 0.25000,0.19370 0.25000,0.24500 L0.25000,0.58893Z M1.00000,0.33892 L1.00000,0.75000 C1.00000,0.83932 0.90470,0.92185 0.75000,0.96651 C0.59530,1.01117 0.40469,1.01116 0.24999,0.96650 L0.31755,0.84045 C0.38769,0.87790 0.49646,0.89011 0.59188,0.87125 C0.68731,0.85240 0.75000,0.80630 0.75000,0.75500 L0.75000,0.41108Z',x:0,y:0,w:200,h:400,r:0,fx:1,fy:1,fill:'#000070',stroke:'none',sw:0,op:1}]};
+async function loadSaved(){
+  saved=(await DB.get('meta','saved'))||[];
+  if(!(await DB.get('meta','seeded'))){if(!saved.some(x=>x.id===RJ_SEED.id))saved.unshift({...RJ_SEED,created:Date.now()});await DB.put('meta','saved',saved);await DB.put('meta','seeded',1)}
+  if(tab==='shapes')renderPanel();
+}
+const storeSaved=()=>DB.put('meta','saved',saved);
+function savedSVG(it){const pad=Math.max(it.w,it.h)*.06;
+  return `<svg viewBox="${-it.w/2-pad} ${-it.h/2-pad} ${it.w+2*pad} ${it.h+2*pad}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${it.shapes.map(x=>shapeSVG(x,true)).join('')}</svg>`}
+function addSaved(id){
+  const it=saved.find(x=>x.id===id);if(!it)return;pushUndo();
+  const c=visibleCenter(),m=Math.min(W,H),target=Math.min(.45*m,Math.max(.15*m,.34*m*fitScale()/view.s)),f=target/Math.max(it.w,it.h);
+  const g=it.shapes.length>1?gid():undefined;
+  const made=it.shapes.map(x=>({...JSON.parse(JSON.stringify(x)),id:'s'+(nid++),x:c.x+x.x*f,y:c.y+x.y*f,w:x.w*f,h:x.h*f,sw:(x.sw||0)*f,g,locked:false,hidden:false}));
+  doc.shapes.push(...made);sel=made.map(x=>x.id);inG=null;refresh();toast(`Added ${it.name}`);
+}
+function saveSelection(){
+  const ss=doc.shapes.filter(x=>sel.includes(x.id)&&!x.hidden);if(!ss.length)return;
+  const one=ss.length===1?ss[0]:null,def=one&&one.type==='text'?one.text:one&&one.type!=='path'?shapeN(one):`My shape ${saved.length+1}`;
+  sheet(`<h2>Save to My shapes</h2><p class="note">${ss.length>1?`These ${ss.length} shapes are saved together and come back as a group.`:'This shape is saved with its colours.'} You’ll find it at the top of Shapes.</p>
+    <label class="note" for="sName">Name</label><input class="tin" id="sName" value="${esc(def)}" autocomplete="off" maxlength="40">
+    <div class="btns"><button class="pbtn" data-s="save">Save shape</button><button data-s="x">Cancel</button></div>`,
+  async a=>{if(a==='x')return closeSheet();const name=$('sName').value.trim()||def;
+    const b=union(ss),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;
+    const shapes=ss.map(x=>{const{id,g,locked,hidden,...rest}=JSON.parse(JSON.stringify(x));return{...rest,x:x.x-cx,y:x.y-cy}});
+    saved.unshift({id:'m'+uid(),name,w:Math.max(1,b.r-b.l),h:Math.max(1,b.b-b.t),shapes,created:Date.now()});
+    await storeSaved();closeSheet();toast(`Saved “${name}” to My shapes`);if(tab==='shapes')renderPanel()});
+}
+function savedSheet(id){
+  const it=saved.find(x=>x.id===id);if(!it)return;
+  sheet(`<h2>${esc(it.name)}</h2><div class="sprev">${savedSVG(it)}</div>
+    <label class="note" for="sName">Name</label><input class="tin" id="sName" value="${esc(it.name)}" autocomplete="off" maxlength="40">
+    <div class="btns"><button class="pbtn" data-s="ren">Save name</button></div>
+    <div class="list"><button data-s="add">${IC.plus}Add to canvas</button><button data-s="up">${IC.qup}Move to front of the list</button><button data-s="del" class="danger">${IC.del}Delete from My shapes</button></div>
+    <div class="btns"><button data-s="x">Close</button></div>`,
+  async a=>{
+    if(a==='x')return closeSheet();
+    if(a==='add'){closeSheet();addSaved(id)}
+    if(a==='ren'){const v=$('sName').value.trim();if(!v)return;it.name=v;await storeSaved();closeSheet();renderPanel();toast('Renamed')}
+    if(a==='up'){saved=[it,...saved.filter(x=>x!==it)];await storeSaved();closeSheet();renderPanel()}
+    if(a==='del')sheet(`<h2>Delete “${esc(it.name)}”?</h2><p class="note">It’s removed from My shapes. Copies already on your designs stay.</p><div class="btns"><button class="pbtn dng" data-s="yes">Delete</button><button data-s="no">Keep it</button></div>`,
+      async b=>{closeSheet();if(b!=='yes')return;saved=saved.filter(x=>x!==it);await storeSaved();renderPanel();toast('Deleted from My shapes')});
+  });
+}
 
 // ---------- design library ----------
 // Designs and folders live in this device's IndexedDB. The open design is also mirrored in localStorage so the app starts instantly.
@@ -1814,7 +1882,7 @@ function folderSheet(fid){
 async function backup(){
   await flushSave();const designs=await DB.all('designs'),images={};
   for(const d of designs){const id=d.doc&&d.doc.bgImg&&d.doc.bgImg.id;if(id&&!images[id]){const im=bgData[id]||await DB.get('images',id);if(im)images[id]=im}}
-  const data=JSON.stringify({app:'tessera',version:1,exported:new Date().toISOString(),folders,designs,images});
+  const data=JSON.stringify({app:'tessera',version:1,exported:new Date().toISOString(),folders,designs,images,saved});
   const name=`tessera-backup-${new Date().toISOString().slice(0,10)}.json`,blob=new Blob([data],{type:'application/json'});
   const r=await offerFile(name,blob);if(r==='saved')return toast(`Backed up ${designs.length} design${designs.length===1?'':'s'}`);if(r)return;
   try{const f=new File([blob],name,{type:'application/json'});
@@ -1827,6 +1895,7 @@ $('libFile').addEventListener('change',e=>{const f=e.target.files[0];e.target.va
   const r=new FileReader();r.onload=async()=>{let b;try{b=JSON.parse(r.result)}catch(err){return toast('That file isn’t a Tessera backup')}
     if(!b||b.app!=='tessera'||!Array.isArray(b.designs))return toast('That file isn’t a Tessera backup');
     for(const f of b.folders||[])if(!folders.some(x=>x.id===f.id))folders.push(f);await saveFolders();
+    for(const it of b.saved||[])if(!saved.some(x=>x.id===it.id))saved.push(it);await storeSaved();
     for(const[id,data]of Object.entries(b.images||{}))await DB.put('images',id,data);
     let n=0;const have=await DB.all('designs');
     for(const d of b.designs){const ex=have.find(x=>x.id===d.id);if(ex&&ex.updated>=d.updated)continue;await DB.put('designs',d.id,d);n++}
@@ -1848,7 +1917,7 @@ $('libBody').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushSave()});
 addEventListener('pagehide',flushSave);
 async function initLibrary(){
-  dbOK=await DB.open();folders=(await DB.get('meta','folders'))||[];
+  dbOK=await DB.open();folders=(await DB.get('meta','folders'))||[];await loadSaved();
   let rec=curId&&await DB.get('designs',curId);
   if(!rec){const list=await DB.all('designs');curId=curId||uid();curName=nextName(list);curFolder=null;lastSaved='';
     try{localStorage.setItem('tessera.current',curId)}catch(e){}await flushSave()}
