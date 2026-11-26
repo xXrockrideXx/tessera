@@ -274,6 +274,7 @@ select.tin{padding:8px 10px}
         <button data-qa="flip" data-arg="h" title="Mirror left to right (Shift+H)" aria-label="Mirror left to right"></button>
         <button data-qa="flip" data-arg="v" title="Flip top to bottom (Shift+V)" aria-label="Flip top to bottom"></button>
         <button data-qa="dup" title="Duplicate" aria-label="Duplicate"></button>
+        <button data-qa="tpattach" id="qTp" title="Text on path" aria-label="Put text on path"></button>
         <button data-qa="savesel" title="Save shape to My shapes" aria-label="Save shape to My shapes"></button>
         <button data-qa="rpopen" title="Repeat around" aria-label="Repeat around"></button>
         <button data-qa="rot90" title="Rotate 90° clockwise" aria-label="Rotate 90 degrees clockwise"></button>
@@ -390,6 +391,7 @@ const IC={
  bookmark:I('<path d="M7 3h10a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z"/><path d="M12 7v6M9 10h6"/>'),
  gang:I('<path d="M4 20 20 6" /><path d="M4 20h16" stroke-opacity=".5"/><path d="M11 20a7 7 0 0 0-1.6-4.4" />'),
  pen:I('<path d="M12 3 7 13l5 8 5-8z"/><circle cx="12" cy="13" r="1.6"/><path d="M12 3v8.4"/>'),
+ tpath:I('<path d="M3 18C6 9 18 9 21 18" stroke-dasharray="2.5 2.5"/><path d="M7 12.5 9 8m-1.6 1.4h3M12 7v4.6m-1.4-4.6h2.8M15.5 8.6l1.6 4"/>'),
  bsplit:I('<path d="M4 4h7v7H4zM13 13h7v7h-7z" fill="currentColor" fill-opacity=".3"/><path d="M14 4l6 6M20 4l-6 6" stroke-opacity=".5"/>'),
  ratio:I('<rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M8 10h3M13 14h3"/>'),
  file:I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>'), fit:I('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
@@ -460,7 +462,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='24';
+const APP_VERSION='25';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -485,15 +487,66 @@ function doRedo(){if(sb)return;if(!redo.length)return;undo.push(snap());restore(
 // ---------- geometry ----------
 const rad=d=>d*Math.PI/180;
 const rot=(x,y,a)=>{const c=Math.cos(rad(a)),s=Math.sin(rad(a));return{x:x*c-y*s,y:x*s+y*c}};
-function aabb(s){const c=Math.abs(Math.cos(rad(s.r))),n=Math.abs(Math.sin(rad(s.r)));const hw=(s.w*c+s.h*n)/2,hh=(s.w*n+s.h*c)/2;return{l:s.x-hw,r:s.x+hw,t:s.y-hh,b:s.y+hh}}
+function aabb(s){if(s.type==='text'&&s.tp&&tpBox[s.id]&&isPathText(s))return tpBox[s.id];const c=Math.abs(Math.cos(rad(s.r))),n=Math.abs(Math.sin(rad(s.r)));const hw=(s.w*c+s.h*n)/2,hh=(s.w*n+s.h*c)/2;return{l:s.x-hw,r:s.x+hw,t:s.y-hh,b:s.y+hh}}
 function union(list){if(!list.length)return null;const b=list.map(aabb);return{l:Math.min(...b.map(q=>q.l)),r:Math.max(...b.map(q=>q.r)),t:Math.min(...b.map(q=>q.t)),b:Math.max(...b.map(q=>q.b))}}
 
 // ---------- render ----------
+// ---------- text on a path ----------
+// A text with tp:{ref,at,pos,flip} runs along the outline of shape `ref`; it follows when that shape moves or changes.
+const isPathText=s=>!!(s&&s.type==='text'&&s.tp&&byId(s.tp.ref)&&byId(s.tp.ref).type!=='text');
+const tpBox={};
+const MS=document.createElementNS('http://www.w3.org/2000/svg','svg');MS.setAttribute('aria-hidden','true');
+MS.style.cssText='position:absolute;width:0;height:0;overflow:hidden;visibility:hidden';document.body.appendChild(MS);
+const MP=document.createElementNS('http://www.w3.org/2000/svg','path');MS.appendChild(MP);
+const mcache=new Map();
+function measure(d){let m=mcache.get(d);if(m)return m;MP.setAttribute('d',d);const L=MP.getTotalLength(),N=240,pts=[];
+  for(let i=0;i<=N;i++){const p=MP.getPointAtLength(L*i/N);pts.push([p.x,p.y])}
+  m={L,pts};if(mcache.size>300)mcache.clear();mcache.set(d,m);return m}
+function tpPath(o,flip){
+  // the shape's first outline in canvas coordinates, optionally run the other way round
+  const cs=parsePD(shapeD(o));if(!cs.length)return null;let c=cs[0];
+  if(flip){const sw=n=>({...n,ix:n.ox,iy:n.oy,ox:n.ix,oy:n.iy});
+    const r=c.open?c.slice().reverse().map(sw):[c[0],...c.slice(1).reverse()].map(sw);r.open=c.open;c=r}
+  const tk=pdOf([c]).match(/[MLCZ]|-?\d*\.?\d+(?:e-?\d+)?/gi);let out='',i=0;
+  const cr=Math.cos(rad(o.r)),sr=Math.sin(rad(o.r));
+  while(i<tk.length){const t=tk[i];if(/[MLCZ]/i.test(t)){out+=t;i++;continue}
+    const u=+tk[i],v=+tk[i+1];i+=2;const lx=(u-.5)*o.w*o.fx,ly=(v-.5)*o.h*o.fy;
+    out+=`${(o.x+lx*cr-ly*sr).toFixed(2)},${(o.y+lx*sr+ly*cr).toFixed(2)} `}
+  return{d:out.trim(),closed:!c.open};
+}
+function tpSVG(s,exp,attrs,paint){
+  const o=byId(s.tp.ref),P=tpPath(o,s.tp.flip);if(!P)return'';
+  const m=measure(P.d),D=P.closed?P.d+' '+P.d:P.d,off=(P.closed?1+s.tp.at:s.tp.at)*m.L;
+  const base={above:'auto',on:'central',below:'hanging'}[s.tp.pos||'above'];
+  return `<g opacity="${s.op}"${attrs}><defs><path id="tp-${s.id}" d="${D}"/></defs><text font-family='${FONTS[s.font||'display']}' font-size="${+(s.h*.8).toFixed(2)}" font-weight="${s.font==='display'||!s.font?700:400}" letter-spacing="${s.ls||0}" dominant-baseline="${base}" ${paint} paint-order="stroke"><textPath href="#tp-${s.id}" startOffset="${off.toFixed(2)}" text-anchor="middle">${esc(s.text)}</textPath></text></g>`;
+}
+function tpNearest(s,P0){
+  // where along the path (0–1) a point is closest, so dragging the text slides it along the line
+  const o=byId(s.tp.ref),P=tpPath(o,s.tp.flip),m=measure(P.d);let bi=0,bd=Infinity;
+  m.pts.forEach(([x,y],i)=>{const d=(x-P0.x)**2+(y-P0.y)**2;if(d<bd){bd=d;bi=i}});
+  return bi/(m.pts.length-1);
+}
+function tpDefaultAt(o,flip){
+  const P=tpPath(o,flip);if(!P)return .5;if(!P.closed)return .5;
+  // start centred on the top of the shape: the highest point, nearest the middle
+  const m=measure(P.d),b=aabb(o),cx=(b.l+b.r)/2,top=Math.min(...m.pts.map(p=>p[1]));let bi=0,bd=Infinity;
+  m.pts.forEach(([x,y],i)=>{const d=(y-top)*50+Math.abs(x-cx);if(d<bd){bd=d;bi=i}});return bi/(m.pts.length-1);
+}
+function tpAttach(){
+  const ss=selShapes(),t=ss.find(x=>x.type==='text'),o=ss.find(x=>x.type!=='text');
+  if(ss.length!==2||!t||!o){toast('Select one text and one shape or line together');return}
+  pushUndo();if(t.g&&t.g===o.g){}else{delete t.g}
+  t.tp={ref:o.id,at:tpDefaultAt(o,false),pos:'above',flip:false};t.ls=t.ls||0;
+  // keep it above the path in the layer order so it isn't hidden
+  if(doc.shapes.indexOf(t)<doc.shapes.indexOf(o)){doc.shapes=doc.shapes.filter(x=>x!==t);doc.shapes.splice(doc.shapes.indexOf(o)+1,0,t)}
+  sel=[t.id];openTab('style');refresh();toast('Text now follows the path. Drag it to slide it along');
+}
 function shapeSVG(s,exp){
   const t=`translate(${+s.x.toFixed(2)} ${+s.y.toFixed(2)}) rotate(${+s.r.toFixed(2)}) scale(${s.fx} ${s.fy})`;
   const paint=`fill="${s.fill}" stroke="${s.stroke}" stroke-width="${s.stroke==='none'?0:s.sw}" stroke-linejoin="round"`;
   const attrs=exp?'':` data-id="${s.id}" pointer-events="${s.locked?'none':'all'}"`;
   if(s.hidden) return '';
+  if(isPathText(s))return tpSVG(s,exp,attrs,paint);
   if(s.type==='text'){
     return `<g transform="${t}" opacity="${s.op}"${attrs}><text x="0" y="0" font-family='${FONTS[s.font||'display']}' font-size="${+(s.h*.8).toFixed(2)}" font-weight="${s.font==='display'||!s.font?700:400}" text-anchor="middle" dominant-baseline="central" textLength="${+s.w.toFixed(2)}" lengthAdjust="spacingAndGlyphs" ${paint} paint-order="stroke">${esc(s.text)}</text>${exp?'':`<rect x="${-s.w/2}" y="${-s.h/2}" width="${s.w}" height="${s.h}" fill="transparent"/>`}</g>`;
   }
@@ -524,6 +577,11 @@ function overlay(){
   if(rp&&!sb&&!ep){o+=rpOverlay(k)}
   if(sb){}
   else if(ep){o+=epOverlay(k,A)}
+  else if(ss.length===1&&isPathText(ss[0])){
+    const s=ss[0],b=tpBox[s.id],P=tpPath(byId(s.tp.ref),s.tp.flip);
+    if(P)o+=`<path d="${P.d}" fill="none" stroke="${A}" stroke-width="${1.2*k}" stroke-dasharray="${5*k} ${4*k}" stroke-opacity=".7" pointer-events="none"/>`;
+    if(b)o+=`<rect x="${b.l-4*k}" y="${b.t-4*k}" width="${b.r-b.l+8*k}" height="${b.b-b.t+8*k}" rx="${4*k}" fill="none" stroke="${A}" stroke-width="${1.6*k}" pointer-events="none"/>`;
+  }
   else if(ss.length===1){
     const s=ss[0],w=s.w,h=s.h,small=Math.min(w,h)*view.s<44;
     o+=`<g transform="translate(${s.x} ${s.y}) rotate(${s.r})">`;
@@ -631,6 +689,11 @@ function renderCanvas(){
   world.setAttribute('transform',`matrix(${view.s} 0 0 ${view.s} ${view.tx} ${view.ty})`);
   world.innerHTML=`<defs><clipPath id="artclip"><rect width="${W}" height="${H}"/></clipPath></defs><rect class="artshadow" x="0" y="0" width="${W}" height="${H}" fill="${doc.bg}"/>`+bgImgSVG(false)+
     gridSVG()+`<g clip-path="none">${shapesSVG()}</g>`+guidesSVG()+overlay();
+  let tpChanged=false;
+  for(const s of doc.shapes){if(!isPathText(s))continue;const el=world.querySelector(`[data-id="${s.id}"] text`);if(!el)continue;
+    try{const b=el.getBBox(),nb={l:b.x,t:b.y,r:b.x+b.width,b:b.y+b.height},ob=tpBox[s.id];
+      if(!ob||Math.abs(ob.l-nb.l)+Math.abs(ob.t-nb.t)+Math.abs(ob.r-nb.r)+Math.abs(ob.b-nb.b)>.5){tpBox[s.id]=nb;tpChanged=true}}catch(e){}}
+  if(tpChanged&&!renderCanvas.again&&sel.some(id=>isPathText(byId(id)))){renderCanvas.again=true;renderCanvas();renderCanvas.again=false}
   $('zoom').textContent=Math.round(view.s*100/ fitScale()*100)/100+'%';
   $('zoom').textContent=Math.round(view.s/fitScale()*100)+'%';
 }
@@ -639,7 +702,7 @@ function renderTop(){
   $('bUndo').disabled=sb?!sb.hist.length:!undo.length;$('bRedo').disabled=!!sb||!redo.length;
   $('bDup').disabled=$('bDel').disabled=!sel.length||!!sb;
   $('bSnap').setAttribute('aria-pressed',snapOn);$('bMulti').setAttribute('aria-pressed',multi);
-  const qb=$('qbar'),show=sel.length>0&&!ep&&!sb&&selShapes().some(s=>!s.locked);qb.hidden=!show;$('qBuild').hidden=selShapes().filter(s=>s.type!=='text').length<2;$('qGroup').hidden=sel.length<2||oneGroup();$('qUngroup').hidden=!selShapes().some(s=>s.g);if(show)$('hint')?.remove();
+  const qb=$('qbar'),show=sel.length>0&&!ep&&!sb&&selShapes().some(s=>!s.locked);qb.hidden=!show;$('qBuild').hidden=selShapes().filter(s=>s.type!=='text').length<2;$('qGroup').hidden=sel.length<2||oneGroup();$('qUngroup').hidden=!selShapes().some(s=>s.g);{const q=selShapes();$('qTp').hidden=!(q.length===2&&q.filter(x=>x.type==='text').length===1)}if(show)$('hint')?.remove();
 }
 function refresh(){syncSize();renderCanvas();renderPanel();renderTop();save()}
 
@@ -814,6 +877,7 @@ cv.addEventListener('pointermove',e=>{
   if(drag.mode==='move'){
     let dx=P.x-drag.P0.x, dy=P.y-drag.P0.y;
     if(Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<3&&!drag.changed)return;
+    if(drag.starts.length===1&&isPathText(drag.starts[0].s)){const s=drag.starts[0].s;drag.changed=true;s.tp.at=tpNearest(s,P);renderCanvas();return}
     drag.changed=true; guides={x:null,y:null}; polarGuide=null; angHit=null;
     const rdx=dx,rdy=dy;
     if(snapOn&&drag.starts.length){
@@ -1377,7 +1441,7 @@ function resizeCanvas(nw,nh){
 function act(name,arg){
   const ss=selShapes();
   switch(name){
-    case'dup':{if(!ss.length)return;pushUndo();const k=snapOn?20:16,gm={};const cl=ss.map(s=>({...s,id:'s'+(nid++),x:s.x+k,y:s.y+k,locked:false,g:s.g?(gm[s.g]=gm[s.g]||gid()):undefined}));doc.shapes.push(...cl);sel=cl.map(s=>s.id);toast(cl.length>1?`Duplicated ${cl.length} shapes`:'Duplicated');break}
+    case'dup':{if(!ss.length)return;pushUndo();const k=snapOn?20:16,gm={};const idm={};const cl=ss.map(s=>{const n={...JSON.parse(JSON.stringify(s)),id:'s'+(nid++),x:s.x+k,y:s.y+k,locked:false,g:s.g?(gm[s.g]=gm[s.g]||gid()):undefined};idm[s.id]=n.id;return n});cl.forEach(n=>{if(n.tp&&idm[n.tp.ref])n.tp.ref=idm[n.tp.ref]});doc.shapes.push(...cl);sel=cl.map(s=>s.id);toast(cl.length>1?`Duplicated ${cl.length} shapes`:'Duplicated');break}
     case'del':{if(!ss.length)return;pushUndo();doc.shapes=doc.shapes.filter(s=>!sel.includes(s.id));toast(ss.length>1?`Deleted ${ss.length} shapes`:'Deleted');sel=[];break}
     case'align':{if(!ss.length)return;pushUndo();
       const mode=ss.length===1?'canvas':alignTo, ks=keyShape();
@@ -1403,6 +1467,10 @@ function act(name,arg){
     case'keylast':keyId=sel[sel.length-1];alignTo='key';break;
     case'swap':{if(ss.length!==2)return;pushUndo();const[a,b]=ss;[a.x,b.x]=[b.x,a.x];[a.y,b.y]=[b.y,a.y];toast('Swapped positions');break}
     case'savesel':return saveSelection();
+    case'tpattach':return tpAttach();
+    case'tppos':{const t=ss[0];if(!t||!t.tp)return;pushUndo();t.tp.pos=arg;break}
+    case'tpflip':{const t=ss[0];if(!t||!t.tp)return;pushUndo();t.tp.flip=!t.tp.flip;t.tp.at=(1-t.tp.at)%1;toast('Flipped to the other side');break}
+    case'tpdetach':{const t=ss[0];if(!t||!t.tp)return;pushUndo();const b=tpBox[t.id];delete t.tp;if(b){t.x=(b.l+b.r)/2;t.y=(b.t+b.b)/2}toast('Detached from the path');break}
     case'penfinish':return finishPen(false);
     case'penclose':return finishPen(true);
     case'penundo':if(pen&&pen.pts.length){pen.pts.pop();renderAfterSel()}return;
@@ -1540,8 +1608,17 @@ function pStyle(){
       <div class="row"><label for="op">Opacity</label><input type="range" id="op" min="5" max="100" step="1" value="${op}"><span class="val" id="opv">${op}%</span></div></div>`;
   }
   if(one&&one.type==='text'){
+    const fs=Math.round(one.h*.8),pt=isPathText(one),mx=Math.round(Math.min(W,H)*.3);
     h+=`<div class="sec"><h3>Text</h3><input class="tin" id="txt" value="${esc(one.text)}" autocomplete="off" enterkeyhint="done">
+      <div class="row"><label for="tsize">Size</label><input type="range" id="tsize" min="6" max="${Math.max(mx,fs)}" step="1" value="${fs}"><span class="val" id="tsizev">${fs}</span></div>
+      ${pt?`<div class="row"><label for="tls">Spacing</label><input type="range" id="tls" min="-5" max="60" step="1" value="${one.ls||0}"><span class="val" id="tlsv">${one.ls||0}</span></div>`:''}
       <select class="tin" id="font">${Object.keys(FONTS).map(f=>`<option value="${f}" ${one.font===f?'selected':''}>${{display:'Grotesque bold',serif:'Display serif',sans:'Clean sans',mono:'Monospace'}[f]}</option>`).join('')}</select></div>`;
+    if(pt){const S=(v,l)=>`<button data-act="tppos" data-arg="${v}" aria-pressed="${(one.tp.pos||'above')===v}">${l}</button>`;
+      h+=`<div class="sec"><h3>Follow the path</h3><div class="seg" role="group" aria-label="Text position">${S('above','Above line')}${S('on','On line')}${S('below','Below line')}</div>
+        <div class="row"><label for="tpat">Along</label><input type="range" id="tpat" min="0" max="1000" step="1" value="${Math.round(one.tp.at*1000)}"><span class="val" id="tpatv">${Math.round(one.tp.at*100)}%</span></div>
+        <div class="btns"><button data-act="tpflip">${IC.fv}<span>Flip to the other side</span></button><button data-act="tpdetach">Detach from path</button></div>
+        <p class="note">Drag the text on the canvas to slide it along. Moving or reshaping the path brings the text with it.</p></div>`}
+    else h+=`<div class="sec"><h3>Follow a path</h3><p class="note">Select this text and a shape or a drawn line together, then tap <b>Text on path</b> in the quick menu.</p></div>`;
   }
   return h;
 }
@@ -1576,7 +1653,7 @@ function pArrange(){
   const B=(a,arg,ic,label,dis)=>`<button data-act="${a}" data-arg="${arg||''}" ${dis?'disabled':''} title="${label}">${IC[ic]}<span>${label}</span></button>`;
   let h='';
   const nShp=ss.filter(s=>s.type!=='text').length;
-  if(n>=2)h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('bool','union','bunion','Combine',nShp<2)}${B('bool','cut','bcut','Cut out',nShp<2)}${B('bool','inter','binter','Intersect',nShp<2)}${B('bool','xor','bxor','Remove overlap',nShp<2)}</div><div class="btns">${B('sbstart','','bbuild','Shape builder',nShp<2)}${B('savesel','','bookmark','Save shapes together')}</div>
+  if(n>=2)h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('bool','union','bunion','Combine',nShp<2)}${B('bool','cut','bcut','Cut out',nShp<2)}${B('bool','inter','binter','Intersect',nShp<2)}${B('bool','xor','bxor','Remove overlap',nShp<2)}</div><div class="btns">${B('sbstart','','bbuild','Shape builder',nShp<2)}${B('savesel','','bookmark','Save shapes together')}${ss.length===2&&ss.filter(x=>x.type==='text').length===1?B('tpattach','','tpath','Text on path'):''}</div>
     <p class="note">${nShp<2?'Select at least two shapes (text can’t be combined).':'Shape builder splits overlapping shapes into pieces you can join or remove by dragging. Cut out uses the bottom shape and removes everything stacked on top of it.'}</p></div>`;
   else if(one&&one.type!=='text')h+=`<div class="sec"><h3>Shape tools</h3><div class="btns">${B('editpts','','bpts','Edit points')}${B('rpopen','','repeat','Repeat around')}${B('savesel','','bookmark','Save shape')}${one.type==='path'?B('split','','bsplit','Split apart'):''}</div><p class="note">Tip: double-tap a shape to edit its points.</p></div>`;
   const hasG=ss.some(s=>s.g);
@@ -1708,6 +1785,9 @@ panel.addEventListener('input',e=>{
   if(!editing){pushUndo();editing=true}
   if(el.id==='sw'){ss.forEach(s=>{s.sw=+el.value;if(+el.value>0&&s.stroke==='none')s.stroke='#1b232d'});$('swv').textContent=el.value+'px'}
   else if(el.id==='op'){ss.forEach(s=>s.op=el.value/100);$('opv').textContent=el.value+'%'}
+  else if(el.id==='tsize'){const s=ss[0],nh=+el.value/.8,k2=nh/s.h;s.h=nh;if(!isPathText(s))s.w*=k2;$('tsizev').textContent=el.value}
+  else if(el.id==='tls'){ss[0].ls=+el.value;$('tlsv').textContent=el.value}
+  else if(el.id==='tpat'){ss[0].tp.at=+el.value/1000;$('tpatv').textContent=Math.round(+el.value/10)+'%'}
   else if(el.id==='txt'){const s=ss[0],old=(s.text||'').length||1;s.text=el.value;const nl=Math.max(1,el.value.length);s.w=Math.max(20,s.w*nl/old)}
   else if(el.dataset.k){const v=parseFloat(el.value);if(isNaN(v))return;const s=ss[0];const k=el.dataset.k;
     if(k==='w'||k==='h'){const val=Math.max(4,v);if(lockRatio){const f=val/s[k];s.w*=f;s.h*=f}else s[k]=val}else s[k]=v}
@@ -1745,7 +1825,7 @@ $('bgfile').addEventListener('change',e=>{const f=e.target.files[0];e.target.val
   };
   img.onerror=()=>{URL.revokeObjectURL(url);toast('That file could not be opened as an image')};img.src=url;});
 $('epDone').onclick=()=>{if(pen)return pen.pts.length>=2?finishPen(false):cancelPen();if(sb)return sbFinish(true);if(ep&&ep.multi){ep.multi=false;renderAfterSel();return}exitEdit()};
-{const Q={'order:fwd':IC.qup,'order:bwd':IC.qdown,'flip:h':IC.fh,'flip:v':IC.fv,'dup:':IC.dup,'rot90:':IC.rot90,'rpopen:':IC.repeat,'savesel:':IC.bookmark,'group:':IC.bgroup,'ungroup:':IC.bungroup,'sbstart:':IC.bbuild};
+{const Q={'order:fwd':IC.qup,'order:bwd':IC.qdown,'flip:h':IC.fh,'flip:v':IC.fv,'dup:':IC.dup,'rot90:':IC.rot90,'rpopen:':IC.repeat,'savesel:':IC.bookmark,'tpattach:':IC.tpath,'group:':IC.bgroup,'ungroup:':IC.bungroup,'sbstart:':IC.bbuild};
  document.querySelectorAll('#qbar [data-qa]').forEach(b=>b.innerHTML=Q[b.dataset.qa+':'+(b.dataset.arg||'')]||'');
  const setQ=()=>{$('qbar').classList.toggle('closed',!qOpen);const t=$('qtoggle');t.innerHTML=IC.wrench;t.setAttribute('aria-expanded',qOpen);t.setAttribute('aria-label',qOpen?'Hide quick tools':'Show quick tools')};
  setQ();$('qtoggle').onclick=()=>{qOpen=!qOpen;try{localStorage.setItem('tessera.quick',qOpen?'1':'0')}catch(e){}setQ()};
@@ -1845,6 +1925,9 @@ function addSaved(id){
   const c=visibleCenter(),m=Math.min(W,H),target=Math.min(.45*m,Math.max(.15*m,.34*m*fitScale()/view.s)),f=target/Math.max(it.w,it.h);
   const g=it.shapes.length>1?gid():undefined;
   const made=it.shapes.map(x=>({...JSON.parse(JSON.stringify(x)),id:'s'+(nid++),x:c.x+x.x*f,y:c.y+x.y*f,w:x.w*f,h:x.h*f,sw:(x.sw||0)*f,g,locked:false,hidden:false}));
+  // text saved with its path stays linked to the new copy of that path
+  const km={};it.shapes.forEach((x,i)=>{if(x.key)km[x.key]=made[i].id});
+  made.forEach(m=>{delete m.key;if(m.tp){if(km[m.tp.ref])m.tp.ref=km[m.tp.ref];else delete m.tp}});
   doc.shapes.push(...made);sel=made.map(x=>x.id);inG=null;refresh();toast(`Added ${it.name}`);
 }
 function saveSelection(){
@@ -1855,7 +1938,7 @@ function saveSelection(){
     <div class="btns"><button class="pbtn" data-s="save">Save shape</button><button data-s="x">Cancel</button></div>`,
   async a=>{if(a==='x')return closeSheet();const name=$('sName').value.trim()||def;
     const b=union(ss),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;
-    const shapes=ss.map(x=>{const{id,g,locked,hidden,...rest}=JSON.parse(JSON.stringify(x));return{...rest,x:x.x-cx,y:x.y-cy}});
+    const shapes=ss.map(x=>{const{id,g,locked,hidden,...rest}=JSON.parse(JSON.stringify(x));return{...rest,key:id,x:x.x-cx,y:x.y-cy}});
     saved.unshift({id:'m'+uid(),name,w:Math.max(1,b.r-b.l),h:Math.max(1,b.b-b.t),shapes,created:Date.now()});
     await storeSaved();closeSheet();toast(`Saved “${name}” to My shapes`);if(tab==='shapes')renderPanel()});
 }
