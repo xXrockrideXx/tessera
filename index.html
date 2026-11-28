@@ -103,7 +103,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .lyrow>button:not(.lpick):active{background:var(--sunk)}
 .lyrow svg{width:18px;height:18px}
 .lyrow button[aria-pressed="true"]{color:var(--ink)}
-.lyrow.tools{justify-content:flex-start;gap:2px;padding:0 3px}
+.lyrow.tools{justify-content:space-evenly;padding:0 3px}
 .lyrow.tools button:disabled{opacity:.3}
 @media (prefers-reduced-motion:no-preference){.lylist>*{animation:lyin .16s ease-out backwards}}
 @keyframes lyin{from{opacity:0;transform:translateY(-8px) scale(.94)}}
@@ -503,7 +503,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='29';
+const APP_VERSION='30';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -2308,6 +2308,7 @@ setTimeout(()=>$('hint')?.remove(),7000);
 fit();refresh();showName();initLibrary();
 })();
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
 
 
 
