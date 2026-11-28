@@ -82,6 +82,30 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .qbar.closed .qtoggle{background:var(--panel);color:var(--ink);border-color:var(--line)}
 @media (prefers-reduced-motion:no-preference){.qitems>*{animation:qin .18s ease-out backwards}.qitems>*:nth-last-child(2){animation-delay:.03s}.qitems>*:nth-last-child(3){animation-delay:.06s}.qitems>*:nth-last-child(4){animation-delay:.09s}.qitems>*:nth-last-child(5){animation-delay:.12s}.qitems>*:nth-last-child(6){animation-delay:.15s}}
 @keyframes qin{from{opacity:0;transform:translateY(10px) scale(.85)}}
+.lybar{position:absolute;left:max(12px,env(safe-area-inset-left,0px));top:12px;z-index:4;display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-height:calc(100% - 64px);max-width:calc(100% - 90px);pointer-events:none}
+.lytoggle{pointer-events:auto;display:flex;align-items:center;gap:8px;height:48px;padding:0 16px 0 4px;border-radius:24px;background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:0 3px 10px rgba(10,20,30,.13);transition:transform .12s;max-width:100%}
+.lytoggle:active{transform:scale(.95)}
+.lytoggle .lyic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--accent);flex:0 0 auto}
+.lytoggle .lyic svg{width:22px;height:22px}
+.lybar:not(.closed) .lytoggle .lyic{background:var(--ink);color:var(--panel)}
+.lytoggle .lyname{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+.lylist{pointer-events:auto;display:flex;flex-direction:column;gap:6px;overflow:auto;scrollbar-width:none;padding:4px;margin:-4px}
+.lylist::-webkit-scrollbar{display:none}
+.lybar.closed .lylist{display:none}
+.lyrow{display:flex;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:0 3px 10px rgba(10,20,30,.13);height:44px;padding:0 3px;flex:0 0 auto;min-width:220px}
+.lyrow.act{border-color:var(--accent);background:var(--accent-soft)}
+.lyrow .lpick{flex:1;min-width:0;text-align:left;padding:0 10px;height:38px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:none;border:0;color:var(--ink);font-family:inherit}
+.lyrow .lpick small{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-left:6px}
+.lyrow.act .lpick{font-weight:600}
+.lyrow.dim .lpick{opacity:.45}
+.lyrow>button:not(.lpick){width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--accent);background:none;border:0;flex:0 0 auto}
+.lyrow>button:not(.lpick):active{background:var(--sunk)}
+.lyrow svg{width:19px;height:19px}
+.lyrow button[aria-pressed="true"]{color:var(--ink)}
+.lyrow.tools{justify-content:space-around;min-width:0}
+.lyrow.tools button:disabled{opacity:.3}
+@media (prefers-reduced-motion:no-preference){.lylist>*{animation:lyin .16s ease-out backwards}}
+@keyframes lyin{from{opacity:0;transform:translateY(-8px) scale(.94)}}
 .hint{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:52px;font-size:12px;color:var(--muted);max-width:60%}
 .artshadow{filter:drop-shadow(0 2px 10px rgba(20,30,40,.14))}
 
@@ -190,6 +214,16 @@ select.tin{padding:8px 10px}
 .lr .ib{width:34px;height:34px}
 .lr .ib svg{width:18px;height:18px}
 .lr.dim .nm,.lr.dim .th{opacity:.4}
+.lyhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}.lyhead h3{margin:0}
+.lyhead .pbtn{display:flex;align-items:center;gap:6px;padding:7px 12px}.lyhead .pbtn svg{width:16px;height:16px}
+.ly{display:grid;grid-template-columns:34px minmax(0,1fr) auto auto;align-items:center;gap:6px;padding:4px 6px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+.ly.act{border-color:var(--accent);background:var(--accent-soft)}
+.ly .lnm{text-align:left;min-width:0;padding:4px 2px;background:none;border:0;font:inherit;color:inherit;cursor:pointer}
+.ly .lnm b{display:block;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ly .lnm small{display:block;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.ly .ib{width:34px;height:34px}.ly .ib svg{width:18px;height:18px}.ly .fold:disabled{opacity:.25}
+.ly.dim .lnm{opacity:.45}
+.lyitems{display:grid;gap:2px;margin:2px 0 6px 18px;padding-left:8px;border-left:2px solid var(--line)}
 
 /* menu + modal + toast */
 .menu{position:absolute;top:56px;left:max(10px,env(safe-area-inset-left,0px));z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;min-width:220px;box-shadow:0 12px 32px rgba(10,20,30,.18);display:grid}
@@ -268,6 +302,10 @@ select.tin{padding:8px 10px}
       <g id="world"></g>
     </svg>
     <div class="hint" id="hint">With a shape selected, drag anywhere to move it · tap empty space to deselect · two fingers to pan and zoom</div>
+    <div class="lybar closed" id="lybar">
+      <button class="lytoggle" id="lyToggle" aria-expanded="false" aria-controls="lylist" title="Layers (L)"><span class="lyic"></span><span class="lyname" id="lyActName">Layer 1</span></button>
+      <div class="lylist" id="lylist" role="group" aria-label="Layers"></div>
+    </div>
     <div class="qbar" id="qbar" hidden>
       <div class="qitems" id="qitems">
         <div class="qpair"><button data-qa="order" data-arg="fwd" title="Bring forward" aria-label="Bring forward"></button><button data-qa="order" data-arg="bwd" title="Send backward" aria-label="Send backward"></button></div>
@@ -372,7 +410,11 @@ const IC={
  bbuild:I('<circle cx="9" cy="10" r="6"/><circle cx="15" cy="10" r="6"/><path d="M12 5.2a6 6 0 0 1 0 9.6a6 6 0 0 1 0-9.6z" fill="currentColor" fill-opacity=".45"/><path d="M4 21h16" stroke-dasharray="2 2"/>'),
  folder:I('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="currentColor" fill-opacity=".15"/>'),
  fplus:I('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10v6M9 13h6"/>'),
- plus:I('<path d="M12 5v14M5 12h14"/>'), more:I('<circle cx="5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="12" r="1.3" fill="currentColor"/>'),
+ plus:I('<path d="M12 5v14M5 12h14"/>'),
+ layers:I('<path d="M12 3 2 8.5 12 14l10-5.5z"/><path d="m2 12.5 10 5.5 10-5.5"/><path d="m2 16.5 10 5.5 10-5.5"/>'),
+ movehere:I('<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>'),
+ lyup:I('<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>'),
+ lydown:I('<path d="M12 5v14"/><path d="m6 13 6 6 6-6"/>'), more:I('<circle cx="5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="12" r="1.3" fill="currentColor"/>'),
  back:I('<path d="M15 5l-7 7 7 7"/>'), close:I('<path d="M6 6l12 12M18 6 6 18"/>'), grid4:I('<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>'),
  save:I('<path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 19h14"/>'), upload:I('<path d="M12 15V4M7 9l5-5 5 5"/><path d="M5 19h14"/>'), pencil:I('<path d="M4 20h4L19 9l-4-4L4 16z"/>'),
  qup:I('<path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 19h14" stroke-dasharray="2.5 2.5"/>'),
@@ -460,7 +502,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='26';
+const APP_VERSION='27';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -477,6 +519,25 @@ const selShapes=()=>sel.map(byId).filter(Boolean);
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const save=()=>{try{localStorage.setItem('tessera.doc',JSON.stringify(doc))}catch(e){}queueSave()};
 const snap=()=>JSON.stringify(doc);
+// ---------- layers ----------
+const lyOf=s=>doc.layers&&doc.layers.find(l=>l.id===s.ly);
+function isH(s){if(s.hidden)return true;const l=lyOf(s);return!!(l&&l.hidden)}
+function isL(s){if(s.locked)return true;const l=lyOf(s);return!!(l&&l.locked)}
+const lyId=()=>'L'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+let lyFold={};
+function normLayers(){
+  if(!Array.isArray(doc.layers)||!doc.layers.length)doc.layers=[{id:'L1',name:'Layer 1'}];
+  const ids=new Set(doc.layers.map(l=>l.id));
+  if(!ids.has(doc.aly))doc.aly=doc.layers[doc.layers.length-1].id;
+  let fresh=false;doc.shapes.forEach(s=>{if(!ids.has(s.ly)){s.ly=doc.aly;fresh=true}});
+  // a group never straddles layers: it lives on its topmost member's layer
+  const ix={};doc.layers.forEach((l,i)=>ix[l.id]=i);const gl={};
+  doc.shapes.forEach(s=>{if(s.g&&(gl[s.g]==null||ix[s.ly]>ix[gl[s.g]]))gl[s.g]=s.ly});doc.shapes.forEach(s=>{if(s.g)s.ly=gl[s.g]});
+  const srt=doc.shapes.map((s,i)=>[s,i]).sort((a,b)=>ix[a[0].ly]-ix[b[0].ly]||a[1]-b[1]).map(a=>a[0]);
+  if(srt.some((x,i)=>x!==doc.shapes[i]))doc.shapes=srt;
+  if(fresh){const a=doc.layers.find(l=>l.id===doc.aly);if(a.hidden||a.locked){const w=a.hidden?'hidden':'locked';a.hidden=a.locked=false;toast(`Layer “${a.name}” was ${w} — switched it back on for the new shape`)}}
+}
+function followSel(){const q=selShapes();if(q.length&&q.every(x=>x.ly===q[0].ly)&&doc.layers.some(l=>l.id===q[0].ly))doc.aly=q[0].ly}
 function pushUndo(prev){undo.push(prev||snap());if(undo.length>150)undo.shift();redo=[]}
 function restore(str){const w=W,h=H;doc=JSON.parse(str);syncSize();sel=sel.filter(byId);if(ep){const s=byId(ep.id);if(s&&s.type==='path'){ep.cs=parsePD(s.pd);ep.si=null;ep.sel=[];epClassify()}else ep=null}if(w!==W||h!==H)fit();refresh()}
 function doUndo(){if(pen){if(pen.pts.length){pen.pts.pop();renderAfterSel()}return}if(sb){if(sb.hist.length){sb.regions=sb.hist.pop();renderAfterSel()}return}if(!undo.length)return;redo.push(snap());restore(undo.pop())}
@@ -543,8 +604,8 @@ function tpAttach(){
 function shapeSVG(s,exp){
   const t=`translate(${+s.x.toFixed(2)} ${+s.y.toFixed(2)}) rotate(${+s.r.toFixed(2)}) scale(${s.fx} ${s.fy})`;
   const paint=`fill="${s.fill}" stroke="${s.stroke}" stroke-width="${s.stroke==='none'?0:s.sw}" stroke-linejoin="round"`;
-  const attrs=exp?'':` data-id="${s.id}" pointer-events="${s.locked?'none':'all'}"`;
-  if(s.hidden) return '';
+  const attrs=exp?'':` data-id="${s.id}" pointer-events="${isL(s)?'none':'all'}"`;
+  if(isH(s)) return '';
   if(isPathText(s))return tpSVG(s,exp,attrs,paint);
   if(s.type==='text'){
     return `<g transform="${t}" opacity="${s.op}"${attrs}><text x="0" y="0" font-family='${FONTS[s.font||'display']}' font-size="${+(s.h*.8).toFixed(2)}" font-weight="${s.font==='display'||!s.font?700:400}" text-anchor="middle" dominant-baseline="central" textLength="${+s.w.toFixed(2)}" lengthAdjust="spacingAndGlyphs" ${paint} paint-order="stroke">${esc(s.text)}</text>${exp?'':`<rect x="${-s.w/2}" y="${-s.h/2}" width="${s.w}" height="${s.h}" fill="transparent"/>`}</g>`;
@@ -585,7 +646,7 @@ function overlay(){
     const s=ss[0],w=s.w,h=s.h,small=Math.min(w,h)*view.s<44;
     o+=`<g transform="translate(${s.x} ${s.y}) rotate(${s.r})">`;
     o+=`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" fill="none" stroke="${A}" stroke-width="${1.6*k}" pointer-events="none"/>`;
-    if(!s.locked){
+    if(!isL(s)){
       const ry=-h/2-30*k;
       o+=`<line x1="0" y1="${-h/2}" x2="0" y2="${ry}" stroke="${A}" stroke-width="${1.4*k}"/>`;
       o+=`<circle cx="0" cy="${ry}" r="${8*k}" fill="#fff" stroke="${A}" stroke-width="${2*k}" pointer-events="none"/>`;
@@ -602,7 +663,7 @@ function overlay(){
     ss.forEach(s=>{o+=`<g transform="translate(${s.x} ${s.y}) rotate(${s.r})"><rect x="${-s.w/2}" y="${-s.h/2}" width="${s.w}" height="${s.h}" fill="none" stroke="${A}" stroke-opacity=".6" stroke-width="${1.2*k}" pointer-events="none"/></g>`});
     const b=union(ss),grp=oneGroup();o+=`<rect x="${b.l}" y="${b.t}" width="${b.r-b.l}" height="${b.b-b.t}" fill="none" stroke="${A}" stroke-width="${1.6*k}" ${grp?'':`stroke-dasharray="${6*k} ${4*k}"`} pointer-events="none"/>`;
     if(grp)o+=`<g pointer-events="none" transform="translate(${b.r} ${b.b+6*k})"><rect x="${-52*k}" y="0" width="${52*k}" height="${18*k}" rx="${4*k}" fill="${A}"/><text x="${-26*k}" y="${9*k}" font-size="${11*k}" font-weight="700" fill="var(--accent-ink)" text-anchor="middle" dominant-baseline="central" font-family="JetBrains Mono, monospace">GROUP</text></g>`;
-    if(!ss.some(s=>s.locked)){
+    if(!ss.some(s=>isL(s))){
       const cx=(b.l+b.r)/2,ry=b.t-30*k,small=Math.min(b.r-b.l,b.b-b.t)*view.s<44;
       o+=`<line x1="${cx}" y1="${b.t}" x2="${cx}" y2="${ry}" stroke="${A}" stroke-width="${1.4*k}"/><circle cx="${cx}" cy="${ry}" r="${8*k}" fill="#fff" stroke="${A}" stroke-width="${2*k}" pointer-events="none"/><circle cx="${cx}" cy="${ry}" r="${20*k}" fill="transparent" data-h="rot"/>`;
       for(const hx of[-1,0,1])for(const hy of[-1,0,1]){if(!hx&&!hy)continue;const edge=!hx||!hy;if(edge&&small)continue;
@@ -696,14 +757,28 @@ function renderCanvas(){
   $('zoom').textContent=Math.round(view.s*100/ fitScale()*100)/100+'%';
   $('zoom').textContent=Math.round(view.s/fitScale()*100)+'%';
 }
-function renderTop(){
+let lyOpen=(()=>{try{return localStorage.getItem('tessera.lyOpen')==='1'}catch(e){return false}})();
+function renderLyMenu(){
+  const bar=$('lybar');if(!bar||!doc.layers)return;
+  const L=doc.layers,ai=L.findIndex(l=>l.id===doc.aly),al=L[ai]||L[0];
+  bar.classList.toggle('closed',!lyOpen);$('lyToggle').setAttribute('aria-expanded',lyOpen);
+  $('lyActName').textContent=al?al.name:'Layers';
+  if(!lyOpen){$('lylist').innerHTML='';return}
+  const q=selShapes(),cnt=id=>doc.shapes.filter(s=>s.ly===id).length;
+  let h=`<div class="lyrow tools"><button data-la="lyadd" title="New layer" aria-label="New layer">${IC.plus}</button><button data-la="lyord" data-arg="up" title="Move active layer up" aria-label="Move active layer up" ${ai<L.length-1?'':'disabled'}>${IC.lyup}</button><button data-la="lyord" data-arg="down" title="Move active layer down" aria-label="Move active layer down" ${ai>0?'':'disabled'}>${IC.lydown}</button><button data-la="lyopen" title="More layer options" aria-label="More layer options">${IC.more}</button></div>`;
+  [...L].reverse().forEach(l=>{const on=l.id===doc.aly,mv=q.length&&q.some(s=>s.ly!==l.id);
+    h+=`<div class="lyrow ${on?'act':''} ${l.hidden?'dim':''}"><button class="lpick" data-la="lyset" data-arg="${l.id}" aria-pressed="${on}">${esc(l.name)}<small>${cnt(l.id)}</small></button>${mv?`<button data-la="lymove" data-arg="${l.id}" title="Move selection to ${esc(l.name)}" aria-label="Move selection to ${esc(l.name)}">${IC.movehere}</button>`:''}<button data-la="lylock" data-arg="${l.id}" aria-pressed="${!!l.locked}" title="${l.locked?'Unlock':'Lock'} ${esc(l.name)}" aria-label="${l.locked?'Unlock':'Lock'} ${esc(l.name)}">${l.locked?IC.lock:IC.unlock}</button><button data-la="lyvis" data-arg="${l.id}" title="${l.hidden?'Show':'Hide'} ${esc(l.name)}" aria-label="${l.hidden?'Show':'Hide'} ${esc(l.name)}">${l.hidden?IC.eyeoff:IC.eye}</button></div>`});
+  $('lylist').innerHTML=h;
+}
+function setLyOpen(v){lyOpen=v;try{localStorage.setItem('tessera.lyOpen',v?'1':'0')}catch(e){}renderLyMenu()}
+function renderTop(){renderLyMenu();
   $('bPen').setAttribute('aria-pressed',!!pen);
   $('bUndo').disabled=sb?!sb.hist.length:!undo.length;$('bRedo').disabled=!!sb||!redo.length;
   $('bDup').disabled=$('bDel').disabled=!sel.length||!!sb;
   $('bSnap').setAttribute('aria-pressed',snapOn);$('bMulti').setAttribute('aria-pressed',multi);
-  const qb=$('qbar'),show=sel.length>0&&!ep&&!sb&&selShapes().some(s=>!s.locked);qb.hidden=!show;$('qBuild').hidden=selShapes().filter(s=>s.type!=='text').length<2;$('qGroup').hidden=sel.length<2||oneGroup();$('qUngroup').hidden=!selShapes().some(s=>s.g);{const q=selShapes();$('qTp').hidden=!(q.length===2&&q.filter(x=>x.type==='text').length===1)}if(show)$('hint')?.remove();
+  const qb=$('qbar'),show=sel.length>0&&!ep&&!sb&&selShapes().some(s=>!isL(s));qb.hidden=!show;$('qBuild').hidden=selShapes().filter(s=>s.type!=='text').length<2;$('qGroup').hidden=sel.length<2||oneGroup();$('qUngroup').hidden=!selShapes().some(s=>s.g);{const q=selShapes();$('qTp').hidden=!(q.length===2&&q.filter(x=>x.type==='text').length===1)}if(show)$('hint')?.remove();
 }
-function refresh(){syncSize();renderCanvas();renderPanel();renderTop();save()}
+function refresh(){normLayers();followSel();syncSize();renderCanvas();renderPanel();renderTop();save()}
 
 // ---------- view ----------
 function fitScale(){const r=cv.getBoundingClientRect();return Math.max(.05,Math.min((r.width-40)/W,(r.height-40)/H))}
@@ -732,7 +807,7 @@ function addShape(type){
 // ----- size matching -----
 const boxShape=b=>({x:(b.l+b.r)/2,y:(b.t+b.b)/2,w:b.r-b.l,h:b.b-b.t,r:0});
 function sizeCands(exclude){
-  const c=doc.shapes.filter(o=>!exclude.includes(o.id)&&!o.hidden).map(o=>({t:o,w:o.w,h:o.h}));
+  const c=doc.shapes.filter(o=>!exclude.includes(o.id)&&!isH(o)).map(o=>({t:o,w:o.w,h:o.h}));
   groupBoxes(exclude).forEach(b=>{const t=boxShape(b);c.push({t,w:t.w,h:t.h})});
   return c;
 }
@@ -750,7 +825,7 @@ function sizeMarks(v,axis,cands){
   return marks.length?{v,marks}:null;
 }
 function groupBoxes(exclude){
-  const m={};doc.shapes.forEach(s=>{if(s.g&&!s.hidden&&!exclude.includes(s.id))(m[s.g]=m[s.g]||[]).push(s)});
+  const m={};doc.shapes.forEach(s=>{if(s.g&&!isH(s)&&!exclude.includes(s.id))(m[s.g]=m[s.g]||[]).push(s)});
   return Object.values(m).filter(a=>a.length>1).map(union);
 }
 function bgRect(){const b=doc.bgImg;if(!b||!b.show||!bgData[b.id]||b.fit!=='fit'||!b.iw)return null;
@@ -762,7 +837,7 @@ function polarSnap(st,rdx,rdy){
   // a little more forgiving than edge snapping, so a fingertip finds the ring easily
   const cx=st.x+rdx,cy=st.y+rdy,rm=radOf(s),thr=13/view.s;let best=null;
   for(const o of doc.shapes){
-    if(o===s||o.hidden||sel.includes(o.id))continue;
+    if(o===s||isH(o)||sel.includes(o.id))continue;
     const ox=o.x,oy=o.y,d=Math.hypot(cx-ox,cy-oy);if(d<1)continue;
     // rings the moving centre can sit on: its edge passes through the other centre, and for other circles
     // its centre on their edge, edges touching outside, or touching inside
@@ -780,11 +855,11 @@ function polarSnap(st,rdx,rdy){
 }
 function snapTargets(axis,exclude,noGuides){
   const T=[];if(!snapOn)return T;const L=axis==='x'?W:H;
-  if(SN.obj){T.push(0,L/2,L);doc.shapes.filter(s=>!exclude.includes(s.id)&&!s.hidden).forEach(s=>{const b=aabb(s);if(axis==='x')T.push(b.l,(b.l+b.r)/2,b.r);else T.push(b.t,(b.t+b.b)/2,b.b)});
+  if(SN.obj){T.push(0,L/2,L);doc.shapes.filter(s=>!exclude.includes(s.id)&&!isH(s)).forEach(s=>{const b=aabb(s);if(axis==='x')T.push(b.l,(b.l+b.r)/2,b.r);else T.push(b.t,(b.t+b.b)/2,b.b)});
     // a group's outer edges and centre count too, not just its members
     groupBoxes(exclude).forEach(b=>{if(axis==='x')T.push(b.l,(b.l+b.r)/2,b.r);else T.push(b.t,(b.t+b.b)/2,b.b)});
     // halfway between the centres of any two other shapes, so a shape can sit exactly between two others
-    const cs=doc.shapes.filter(s=>!exclude.includes(s.id)&&!s.hidden).map(s=>{const b=aabb(s);return axis==='x'?(b.l+b.r)/2:(b.t+b.b)/2});
+    const cs=doc.shapes.filter(s=>!exclude.includes(s.id)&&!isH(s)).map(s=>{const b=aabb(s);return axis==='x'?(b.l+b.r)/2:(b.t+b.b)/2});
     if(cs.length<=60)for(let i=0;i<cs.length;i++)for(let j=i+1;j<cs.length;j++)if(Math.abs(cs[i]-cs[j])>1)T.push((cs[i]+cs[j])/2);
     // background image edges when it is fitted inside the canvas
     const ib=bgRect();if(ib){if(axis==='x')T.push(ib.l,(ib.l+ib.r)/2,ib.r);else T.push(ib.t,(ib.t+ib.b)/2,ib.b)}}
@@ -848,24 +923,24 @@ cv.addEventListener('pointerdown',e=>{
     if(h==='rot'){drag={mode:'rot',prev,s}}
     else{const[hx,hy]=h.split(',').map(Number);const a=rot(-hx*s.w/2,-hy*s.h/2,s.r);
       drag={mode:'resize',prev,s,hx,hy,A:{x:s.x+a.x,y:s.y+a.y},w0:s.w,h0:s.h}}
-  } else if(sEl&&!ep&&sel.length&&!sel.includes(sEl.dataset.id)&&!(multi||e.shiftKey)&&selShapes().some(s=>!s.locked)){
+  } else if(sEl&&!ep&&sel.length&&!sel.includes(sEl.dataset.id)&&!(multi||e.shiftKey)&&selShapes().some(s=>!isL(s))){
     // a shape is already selected: dragging over another shape still moves the selected one; a plain tap picks the other shape
-    drag={mode:'move',prev,P0:P,starts:selShapes().filter(s=>!s.locked).map(s=>({s,x:s.x,y:s.y})),id:null,sx:e.clientX,sy:e.clientY,remote:true,tapId:sEl.dataset.id};
+    drag={mode:'move',prev,P0:P,starts:selShapes().filter(s=>!isL(s)).map(s=>({s,x:s.x,y:s.y})),id:null,sx:e.clientX,sy:e.clientY,remote:true,tapId:sEl.dataset.id};
   } else if(sEl){
     const id=sEl.dataset.id,sh=byId(id);
     if(multi||e.shiftKey){const grp=expand([id]); if(sel.includes(id)){sel=sel.filter(x=>!grp.includes(x));renderAfterSel();return} sel=[...new Set([...sel,...grp])] }
     else if(!sel.includes(id)){ if(sh.g&&inG===sh.g) sel=[id]; else {inG=null;sel=expand([id])} }
-    drag={mode:'move',prev,P0:P,starts:selShapes().filter(s=>!s.locked).map(s=>({s,x:s.x,y:s.y})),id,sx:e.clientX,sy:e.clientY};
+    drag={mode:'move',prev,P0:P,starts:selShapes().filter(s=>!isL(s)).map(s=>({s,x:s.x,y:s.y})),id,sx:e.clientX,sy:e.clientY};
     renderAfterSel();
-  } else if(sel.length&&!ep&&!(multi||e.shiftKey)&&selShapes().some(s=>!s.locked)){
+  } else if(sel.length&&!ep&&!(multi||e.shiftKey)&&selShapes().some(s=>!isL(s))){
     // drag anywhere on the canvas moves the current selection; a plain tap deselects
-    drag={mode:'move',prev,P0:P,starts:selShapes().filter(s=>!s.locked).map(s=>({s,x:s.x,y:s.y})),id:null,sx:e.clientX,sy:e.clientY,remote:true};
+    drag={mode:'move',prev,P0:P,starts:selShapes().filter(s=>!isL(s)).map(s=>({s,x:s.x,y:s.y})),id:null,sx:e.clientX,sy:e.clientY,remote:true};
   } else {
     if(!(multi||e.shiftKey)){sel=[];inG=null}
     drag={mode:'marq',a:P,keep:[...sel]};marq={a:P,b:P};renderAfterSel();
   }
 });
-function renderAfterSel(){renderCanvas();renderPanel();renderTop()}
+function renderAfterSel(){followSel();renderCanvas();renderPanel();renderTop()}
 cv.addEventListener('pointermove',e=>{
   if(!ptrs.has(e.pointerId))return;
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -1010,7 +1085,7 @@ cv.addEventListener('pointermove',e=>{
   }
   if(drag.mode==='marq'){
     marq.b=P;const l=Math.min(marq.a.x,P.x),r=Math.max(marq.a.x,P.x),t=Math.min(marq.a.y,P.y),b=Math.max(marq.a.y,P.y);
-    const hit=doc.shapes.filter(s=>!s.hidden&&!s.locked).filter(s=>{const q=aabb(s);return q.l<r&&q.r>l&&q.t<b&&q.b>t}).map(s=>s.id);
+    const hit=doc.shapes.filter(s=>!isH(s)&&!isL(s)).filter(s=>{const q=aabb(s);return q.l<r&&q.r>l&&q.t<b&&q.b>t}).map(s=>s.id);
     sel=[...new Set([...drag.keep,...expand(hit)])];renderCanvas();
   }
 });
@@ -1083,7 +1158,7 @@ function onDoubleTap(id){
 
 // ---------- groups ----------
 function expand(ids){const gs=new Set(ids.map(byId).filter(s=>s&&s.g).map(s=>s.g));if(!gs.size)return ids;
-  return [...new Set([...ids,...doc.shapes.filter(s=>s.g&&gs.has(s.g)&&!s.hidden&&!s.locked).map(s=>s.id)])]}
+  return [...new Set([...ids,...doc.shapes.filter(s=>s.g&&gs.has(s.g)&&!isH(s)&&!isL(s)).map(s=>s.id)])]}
 const oneGroup=()=>{const ss=selShapes();return ss.length>1&&!!ss[0].g&&ss.every(s=>s.g===ss[0].g)};
 
 // ---------- point editing ----------
@@ -1125,7 +1200,7 @@ function normalisePts(s,cs){
   s.w*=ru;s.h*=rv;s.x=c0.x;s.y=c0.y;s.pd=pdOf(cs);
 }
 function enterEdit(id){
-  const s=byId(id);if(!s||s.type==='text'||s.locked)return;
+  const s=byId(id);if(!s||s.type==='text'||isL(s))return;
   pushUndo();if(s.type!=='path'){s.name=shapeN(s);s.pd=shapeD(s);s.type='path'}
   ep={id,cs:parsePD(s.pd),si:null,sel:[],multi:false};epClassify();sel=[id];openTab('arrange');refresh();
   toast('Editing points — drag them, or tap a small dot to add one');
@@ -1249,7 +1324,7 @@ let rp=null,rpPrefs={n:6,pivot:'near',turn:true,group:true};
 try{Object.assign(rpPrefs,JSON.parse(localStorage.getItem('tessera.repeat')||'{}'))}catch(e){}
 const rpSave=()=>{Object.assign(rpPrefs,{n:rp.n,pivot:rp.pivot,turn:rp.turn,group:rp.group});try{localStorage.setItem('tessera.repeat',JSON.stringify(rpPrefs))}catch(e){}};
 function rpNearest(){const ss=selShapes(),b=union(ss),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;let best=null,bd=Infinity;
-  for(const o of doc.shapes){if(o.hidden||sel.includes(o.id))continue;const d=Math.hypot(o.x-cx,o.y-cy);if(d<bd){bd=d;best=o}}return best}
+  for(const o of doc.shapes){if(isH(o)||sel.includes(o.id))continue;const d=Math.hypot(o.x-cx,o.y-cy);if(d<bd){bd=d;best=o}}return best}
 function rpPivot(){
   const ss=selShapes(),b=union(ss),c={x:(b.l+b.r)/2,y:(b.t+b.b)/2};
   if(rp.pivot==='canvas')return{x:W/2,y:H/2};
@@ -1258,7 +1333,7 @@ function rpPivot(){
   const o=rpNearest();return o?{x:o.x,y:o.y}:{x:W/2,y:H/2};
 }
 function rpCopies(){
-  const pv=rpPivot(),ss=selShapes().filter(s=>!s.locked),out=[];
+  const pv=rpPivot(),ss=selShapes().filter(s=>!isL(s)),out=[];
   for(let k=1;k<rp.n;k++){const a=360*k/rp.n;for(const s of ss){const p=rot(s.x-pv.x,s.y-pv.y,a);
     out.push({...s,k,x:pv.x+p.x,y:pv.y+p.y,r:rp.turn?(((s.r+a+180)%360+360)%360-180):s.r,locked:false})}}
   return{pv,out};
@@ -1271,7 +1346,7 @@ function rpOverlay(k){
 }
 function rpApply(){
   const{out}=rpCopies();if(!out.length)return;pushUndo();
-  const ss=selShapes().filter(s=>!s.locked),g=rp.group?gid():null,gm={};
+  const ss=selShapes().filter(s=>!isL(s)),g=rp.group?gid():null,gm={};
   const made=out.map(c=>{const{k,...rest}=c;const key=k+':'+(c.g||'');const ng=g||(c.g?(gm[key]=gm[key]||gid()):undefined);return{...rest,id:'s'+(nid++),g:ng}});
   if(g)ss.forEach(s=>s.g=g);
   const top=Math.max(...ss.map(s=>doc.shapes.indexOf(s)));doc.shapes.splice(top+1,0,...made);
@@ -1325,7 +1400,7 @@ function mpToShape(mp,base,name){
 const BOOL={union:['Combined shape','Combined'],cut:['Cut-out shape','Cut out'],inter:['Intersection','Intersected'],xor:['Overlap removed','Overlap removed']};
 function booleanOp(op){
   const PC=window.polygonClipping;if(!PC){toast('Shape tools could not load. Check your connection and reload.');return}
-  const ss=selShapes().filter(s=>!s.locked);
+  const ss=selShapes().filter(s=>!isL(s));
   const txt=ss.filter(s=>s.type==='text');
   const shp=doc.shapes.filter(s=>ss.includes(s)&&s.type!=='text'); // in layer order, bottom first
   if(shp.length<2){toast(txt.length?'Text can’t be combined — select at least two shapes':'Select at least two shapes');return}
@@ -1359,7 +1434,7 @@ function inRing(x,y,r){let c=false;for(let i=0,j=r.length-1;i<r.length;j=i++){co
 const inMP=(x,y,mp)=>mp.some(p=>p.reduce((c,r)=>inRing(x,y,r)?!c:c,false));
 function sbStart(){
   const PC=window.polygonClipping;if(!PC){toast('Shape tools could not load. Check your connection and reload.');return}
-  const shp=doc.shapes.filter(s=>sel.includes(s.id)&&s.type!=='text'&&!s.locked);
+  const shp=doc.shapes.filter(s=>sel.includes(s.id)&&s.type!=='text'&&!isL(s));
   if(shp.length<2){toast('Select at least two overlapping shapes');return}
   let R;
   const compute=geos=>{let R=[],U=null;
@@ -1445,7 +1520,7 @@ function act(name,arg){
     case'align':{if(!ss.length)return;pushUndo();
       const mode=ss.length===1?'canvas':alignTo, ks=keyShape();
       const box=mode==='canvas'?{l:0,r:W,t:0,b:H}:mode==='key'&&ks?aabb(ks):union(ss);
-      ss.filter(s=>!(mode==='key'&&s===ks)&&!s.locked).forEach(s=>{const b=aabb(s);if(arg==='l')s.x+=box.l-b.l;if(arg==='r')s.x+=box.r-b.r;if(arg==='c')s.x+=(box.l+box.r)/2-s.x;if(arg==='t')s.y+=box.t-b.t;if(arg==='b')s.y+=box.b-b.b;if(arg==='m')s.y+=(box.t+box.b)/2-s.y});break}
+      ss.filter(s=>!(mode==='key'&&s===ks)&&!isL(s)).forEach(s=>{const b=aabb(s);if(arg==='l')s.x+=box.l-b.l;if(arg==='r')s.x+=box.r-b.r;if(arg==='c')s.x+=(box.l+box.r)/2-s.x;if(arg==='t')s.y+=box.t-b.t;if(arg==='b')s.y+=box.b-b.b;if(arg==='m')s.y+=(box.t+box.b)/2-s.y});break}
     case'dist':case'gap':{
       // equal gaps between edges (dist) or an exact gap in px (gap); the key shape, or the first in line, stays put
       const hz=arg==='h', need=name==='dist'?3:2; if(ss.length<need)return; pushUndo();
@@ -1474,16 +1549,16 @@ function act(name,arg){
     case'penclose':return finishPen(true);
     case'penundo':if(pen&&pen.pts.length){pen.pts.pop();renderAfterSel()}return;
     case'pencancel':return cancelPen();
-    case'rpopen':{if(!ss.some(s=>!s.locked))return;rp={...rpPrefs,ids:[...sel]};openTab('arrange');break}
+    case'rpopen':{if(!ss.some(s=>!isL(s)))return;rp={...rpPrefs,ids:[...sel]};openTab('arrange');break}
     case'rpn':rp.n=+arg;rpSave();break;
     case'rppivot':rp.pivot=arg;rpSave();break;
     case'rpturn':rp.turn=!rp.turn;rpSave();break;
     case'rpgroup':rp.group=!rp.group;rpSave();break;
     case'rpapply':return rpApply();
     case'rpcancel':rp=null;break;
-    case'rot90':{const rs=ss.filter(s=>!s.locked);if(!rs.length)return;pushUndo();const b=union(rs),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;
+    case'rot90':{const rs=ss.filter(s=>!isL(s));if(!rs.length)return;pushUndo();const b=union(rs),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;
       rs.forEach(s=>{const p=rot(s.x-cx,s.y-cy,90);s.x=cx+p.x;s.y=cy+p.y;s.r=((s.r+90+180)%360+360)%360-180});break}
-    case'flip':{const fl=ss.filter(s=>!s.locked);if(!fl.length)return;pushUndo();const b=union(fl),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;
+    case'flip':{const fl=ss.filter(s=>!isL(s));if(!fl.length)return;pushUndo();const b=union(fl),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;
       fl.forEach(s=>{if(arg==='h'){s.fx*=-1;s.x=2*cx-s.x}else{s.fy*=-1;s.y=2*cy-s.y}s.r=s.r?-s.r:0});
       toast(arg==='h'?'Mirrored left to right':'Flipped top to bottom');break}
     case'order':{if(!ss.length)return;pushUndo();let arr=doc.shapes;const ids=new Set(sel);
@@ -1547,10 +1622,31 @@ function act(name,arg){
     case'gsel':{if(!ss.length)return;pushUndo();const b=union(ss);let n=0;[['v',b.l],['v',(b.l+b.r)/2],['v',b.r],['h',b.t],['h',(b.t+b.b)/2],['h',b.b]].forEach(([a,p])=>n+=addGuide(a,p));doc.gopt.show=true;toast(`Added ${n} guides around the selection`);break}
     case'gclear':pushUndo();doc.guides=[];toast('All guides removed');break;
     case'gdel':pushUndo();doc.guides=doc.guides.filter(g=>g.id!==arg);break;
+    case'lyadd':{pushUndo();const ai=doc.layers.findIndex(l=>l.id===doc.aly);let k=doc.layers.length+1;while(doc.layers.some(l=>l.name==='Layer '+k))k++;
+      const l={id:lyId(),name:'Layer '+k};doc.layers.splice(ai+1,0,l);doc.aly=l.id;sel=[];toast(`${l.name} added above — new shapes go here`);break}
+    case'lyset':doc.aly=arg;if(selShapes().some(s=>s.ly!==arg))sel=[];break;
+    case'lyfold':lyFold[arg]=!lyFold[arg];renderPanel();return;
+    case'lyvis':{const l=doc.layers.find(x=>x.id===arg);pushUndo();l.hidden=!l.hidden;if(l.hidden)sel=sel.filter(id=>byId(id)?.ly!==arg);break}
+    case'lylock':{const l=doc.layers.find(x=>x.id===arg);pushUndo();l.locked=!l.locked;break}
+    case'lymove':{if(arg&&arg!=='here'&&doc.layers.some(l=>l.id===arg))doc.aly=arg;const ms=ss.filter(s=>s.ly!==doc.aly);if(!ms.length)return;pushUndo();const gs=new Set(ms.map(s=>s.g).filter(Boolean));
+      const all=doc.shapes.filter(s=>ms.includes(s)||(s.g&&gs.has(s.g)));all.forEach(s=>s.ly=doc.aly);
+      doc.shapes=[...doc.shapes.filter(s=>!all.includes(s)),...all];const l=doc.layers.find(x=>x.id===doc.aly);
+      if(l.hidden||l.locked){l.hidden=l.locked=false}toast(`Moved ${all.length} shape${all.length>1?'s':''} to ${l.name}`);break}
+    case'lyselall':sel=doc.shapes.filter(s=>s.ly===doc.aly&&!isH(s)&&!isL(s)).map(s=>s.id);if(!sel.length)toast('Nothing to select — the layer is hidden or locked');break;
+    case'lyord':{const L=doc.layers,i=L.findIndex(l=>l.id===doc.aly),j=arg==='up'?i+1:i-1;if(j<0||j>=L.length)return;pushUndo();[L[i],L[j]]=[L[j],L[i]];break}
+    case'lydup':{pushUndo();const L=doc.layers,i=L.findIndex(l=>l.id===doc.aly),src=L[i];let nm=src.name+' copy',k=2;while(L.some(l=>l.name===nm))nm=src.name+' copy '+(k++);
+      const l={id:lyId(),name:nm};L.splice(i+1,0,l);const gm={},idm={};
+      const cl=doc.shapes.filter(s=>s.ly===src.id).map(s=>{const c={...JSON.parse(JSON.stringify(s)),id:'s'+(nid++),ly:l.id,g:s.g?(gm[s.g]=gm[s.g]||gid()):undefined};idm[s.id]=c.id;return c});
+      cl.forEach(c=>{if(c.tp&&idm[c.tp.ref])c.tp.ref=idm[c.tp.ref]});doc.shapes.push(...cl);doc.aly=l.id;sel=[];toast(`Duplicated as ${nm}`);break}
+    case'lymerge':{const L=doc.layers,i=L.findIndex(l=>l.id===doc.aly);if(i<1)return;pushUndo();const up=L[i],dn=L[i-1];
+      doc.shapes.forEach(s=>{if(s.ly===up.id){s.ly=dn.id;if(up.hidden&&!dn.hidden)s.hidden=true;if(up.locked&&!dn.locked)s.locked=true}});L.splice(i,1);doc.aly=dn.id;toast(`Merged ${up.name} into ${dn.name}`);break}
+    case'lydel':{const L=doc.layers;if(L.length<2)return;const i=L.findIndex(l=>l.id===doc.aly),l=L[i];pushUndo();const gone=new Set(doc.shapes.filter(s=>s.ly===l.id).map(s=>s.id));
+      doc.shapes=doc.shapes.filter(s=>!gone.has(s.id));sel=sel.filter(id=>!gone.has(id));L.splice(i,1);doc.aly=L[Math.max(0,i-1)].id;
+      toast(gone.size?`Deleted ${l.name} and its ${gone.size} shape${gone.size>1?'s':''} — undo brings them back`:`Deleted ${l.name}`);break}
     case'vis':{const s=byId(arg);pushUndo();s.hidden=!s.hidden;if(s.hidden)sel=sel.filter(x=>x!==arg);break}
     case'lock':{const s=byId(arg);pushUndo();s.locked=!s.locked;break}
     case'pick':sel=multi?(sel.includes(arg)?sel.filter(x=>x!==arg):[...sel,arg]):[arg];inG=byId(arg)?.g||null;break;
-    case'selall':sel=doc.shapes.filter(s=>!s.hidden&&!s.locked).map(s=>s.id);break;
+    case'selall':sel=doc.shapes.filter(s=>!isH(s)&&!isL(s)).map(s=>s.id);break;
   }
   refresh();
 }
@@ -1687,16 +1783,39 @@ function pArrange(){
   return h;
 }
 function pLayers(){
-  if(!doc.shapes.length)return `<p class="note">The canvas is empty. Add something from the Shapes tab.</p>`;
-  const rows=[...doc.shapes].reverse().map((s,i)=>{
+  const rowOf=s=>{
     const nm=s.type==='text'?`“${esc(s.text)}”`:shapeN(s);
     const th=s.type==='text'?`<span style="font-family:${esc(FONTS[s.font||'display'])};color:${s.fill==='none'?'#999':s.fill};font-size:14px;font-weight:700">Aa</span>`:
       `<svg viewBox="-20 -20 40 40"><g transform="rotate(${s.r}) scale(${s.fx} ${s.fy})"><path d="${scaleD(shapeD(s),...(s.w>=s.h?[30,30*s.h/s.w]:[30*s.w/s.h,30]))}" fill-rule="evenodd" fill="${s.fill==='none'?'transparent':s.fill}" stroke="${s.stroke==='none'?(s.fill==='none'?'#999':'none'):s.stroke}" stroke-width="2"/></g></svg>`;
-    return `<div class="lr ${sel.includes(s.id)?'on':''} ${s.hidden?'dim':''}" data-pick="${s.id}"><div class="th">${th}</div>
-      <div class="nm">${nm}<small>${doc.shapes.length-i}${s.g?' · group':''} · ${Math.round(s.w)}×${Math.round(s.h)}${s.r?` · ${Math.round(s.r)}°`:''}</small></div>
+    return `<div class="lr sub ${sel.includes(s.id)?'on':''} ${isH(s)?'dim':''}" data-pick="${s.id}"><div class="th">${th}</div>
+      <div class="nm">${nm}<small>${s.g?'group · ':''}${Math.round(s.w)}×${Math.round(s.h)}${s.r?` · ${Math.round(s.r)}°`:''}</small></div>
       <button class="ib" data-act="lock" data-arg="${s.id}" aria-label="${s.locked?'Unlock':'Lock'}" title="${s.locked?'Unlock':'Lock'}" aria-pressed="${!!s.locked}">${s.locked?IC.lock:IC.unlock}</button>
-      <button class="ib" data-act="vis" data-arg="${s.id}" aria-label="${s.hidden?'Show':'Hide'}" title="${s.hidden?'Show':'Hide'}">${s.hidden?IC.eyeoff:IC.eye}</button></div>`});
-  return `<div class="layers">${rows.join('')}</div>`;
+      <button class="ib" data-act="vis" data-arg="${s.id}" aria-label="${s.hidden?'Show':'Hide'}" title="${s.hidden?'Show':'Hide'}">${s.hidden?IC.eyeoff:IC.eye}</button></div>`};
+  const L=doc.layers,n=L.length,ai=L.findIndex(l=>l.id===doc.aly),al=L[ai];
+  const cnt=id=>doc.shapes.filter(s=>s.ly===id).length;
+  const moveable=sel.length&&selShapes().some(s=>s.ly!==doc.aly);
+  let h=`<div class="sec"><div class="lyhead"><h3>Layers</h3><button class="pbtn" data-act="lyadd">${IC.plus||'+'}<span>New layer</span></button></div>`;
+  h+=`<div class="layers">`;
+  [...L].reverse().forEach(l=>{const on=l.id===doc.aly,c=cnt(l.id),open=!lyFold[l.id];
+    h+=`<div class="ly ${on?'act':''} ${l.hidden?'dim':''}">
+      <button class="ib fold" data-act="lyfold" data-arg="${l.id}" aria-label="${open?'Fold':'Unfold'} ${esc(l.name)}" aria-expanded="${open}" ${c?'':'disabled'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${open?0:-90}deg)"><path d="m6 9 6 6 6-6"/></svg></button>
+      <button class="lnm" data-act="lyset" data-arg="${l.id}" aria-pressed="${on}"><b>${esc(l.name)}</b><small>${c} shape${c===1?'':'s'}${on?' · active':''}</small></button>
+      <button class="ib" data-act="lylock" data-arg="${l.id}" aria-label="${l.locked?'Unlock':'Lock'} layer" title="${l.locked?'Unlock':'Lock'} layer" aria-pressed="${!!l.locked}">${l.locked?IC.lock:IC.unlock}</button>
+      <button class="ib" data-act="lyvis" data-arg="${l.id}" aria-label="${l.hidden?'Show':'Hide'} layer" title="${l.hidden?'Show':'Hide'} layer">${l.hidden?IC.eyeoff:IC.eye}</button></div>`;
+    if(open&&c)h+=`<div class="lyitems">${doc.shapes.filter(s=>s.ly===l.id).reverse().map(rowOf).join('')}</div>`});
+  h+=`</div></div>`;
+  h+=`<div class="sec"><h3>Active layer</h3>
+    <div class="row"><label for="lyname">Name</label><input class="tin" type="text" id="lyname" value="${esc(al.name)}" maxlength="40" autocomplete="off" enterkeyhint="done" style="flex:1;min-width:0;margin:0"></div>
+    <div class="btns">
+      <button data-act="lymove" data-arg="here" ${moveable?'':'disabled'}>Move selection here</button>
+      <button data-act="lyselall" ${cnt(al.id)?'':'disabled'}>Select all on layer</button>
+      <button data-act="lyord" data-arg="up" ${ai<n-1?'':'disabled'}>Layer up</button>
+      <button data-act="lyord" data-arg="down" ${ai>0?'':'disabled'}>Layer down</button>
+      <button data-act="lydup">Duplicate layer</button>
+      <button data-act="lymerge" ${ai>0?'':'disabled'}>Merge down</button>
+      <button data-act="lydel" ${n>1?'':'disabled'}>Delete layer</button></div>
+    <p class="note">New shapes go onto the active layer. Tap a layer to make it active; selecting a shape switches to its layer. Hidden layers are left out of exports.</p></div>`;
+  return h;
 }
 function pGrid(){
   const P=(a,arg,on,l)=>`<button data-act="${a}" data-arg="${arg||''}" aria-pressed="${!!on}">${on?'✓ ':''}${l}</button>`;
@@ -1771,6 +1890,7 @@ panel.addEventListener('input',e=>{
   if(el.id==='bgop'&&doc.bgImg){if(!editing){pushUndo();editing=true}doc.bgImg.op=el.value/100;$('bgopv').textContent=el.value+'%';renderCanvas();return}
   if(el.id==='rpnum'&&rp){const v=Math.round(parseFloat(el.value));if(v>=2&&v<=72){rp.n=v;rpSave();renderCanvas();const pb=panel.querySelector('[data-act="rpapply"]');if(pb)pb.textContent=`Make ${v-1} cop${v-1===1?'y':'ies'}`}return}
   if(el.id==='pensw'){penPrefs.sw=+el.value;penSavePrefs();$('pensv').textContent=el.value+'px';renderCanvas();return}
+  if(el.id==='lyname'){const l=doc.layers.find(x=>x.id===doc.aly);if(!l)return;if(!editing){pushUndo();editing=true}l.name=el.value.slice(0,40);const b=panel.querySelector('.ly.act .lnm b');if(b)b.textContent=l.name||' ';renderLyMenu();return}
   if(el.id==='gap'){gapVal=parseFloat(el.value)||0;return}
   if(el.id==='gmar'){gmarVal=parseFloat(el.value)||0;return}
   if(el.id==='gsz'){const v=parseFloat(el.value);if(v>=2&&v<=2000){doc.grid.size=v;renderCanvas()}return}
@@ -1796,6 +1916,7 @@ panel.addEventListener('input',e=>{
 });
 panel.addEventListener('change',e=>{
   if(e.target.dataset.gang){const g=doc.guides.find(x=>x.id===e.target.dataset.gang);if(g){normGuide(g);gAngDef=g.axis==='a'?g.ang:gAngDef}editing=false;save();renderPanel();renderCanvas();return}
+  if(e.target.id==='lyname'){const l=doc.layers.find(x=>x.id===doc.aly);if(l&&!l.name.trim())l.name='Layer';editing=false;save();renderPanel();renderTop();return}
   const ss=selShapes();
   if(e.target.id==='font'&&ss[0]){pushUndo();ss[0].font=e.target.value}
   editing=false;save();renderTop();
@@ -1804,6 +1925,12 @@ panel.addEventListener('change',e=>{
 panel.addEventListener('focusout',()=>{setTimeout(()=>{if(!panel.contains(document.activeElement)){editing=false;renderPanel();renderTop();save()}},0)});
 panel.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input'))e.target.blur()});
 
+$('lyToggle').querySelector('.lyic').innerHTML=IC.layers;
+$('lyToggle').addEventListener('click',()=>setLyOpen(!lyOpen));
+$('lylist').addEventListener('click',e=>{const b=e.target.closest('[data-la]');if(!b||b.disabled)return;e.stopPropagation();
+  if(b.dataset.la==='lyopen'){openTab('layers');renderPanel();return}
+  act(b.dataset.la,b.dataset.arg)});
+['pointerdown','touchstart','wheel'].forEach(t=>$('lybar').addEventListener(t,e=>e.stopPropagation(),{passive:true}));
 // ---------- top bar ----------
 $('bPen').innerHTML=IC.pen;$('bPen').onclick=()=>{if(pen){pen.pts.length>=2?finishPen(false):cancelPen()}else startPen()};
 $('bMenu').innerHTML=IC.menu;$('bSnap').innerHTML=IC.magnet;$('bMulti').innerHTML=IC.multi;$('bDup').innerHTML=IC.dup;$('bDel').innerHTML=IC.del;$('bUndo').innerHTML=IC.undo;$('bRedo').innerHTML=IC.redo;
@@ -1896,6 +2023,7 @@ addEventListener('keydown',e=>{
     if(k==='backspace'||k==='delete'){e.preventDefault();if(pen.pts.length){pen.pts.pop();renderAfterSel()}return}
   }
   if(k==='p'&&!mod&&!pen&&!e.shiftKey){e.preventDefault();startPen();return}
+  if(k==='l'&&!mod&&!e.shiftKey){e.preventDefault();setLyOpen(!lyOpen);return}
   if(k==='escape'){if(sb)return sbFinish(false);if(ep)return exitEdit();sel=[];inG=null;refresh();return}
   if(e.shiftKey&&!mod&&k==='m'){e.preventDefault();sb?sbFinish(true):act('sbstart');return}
   if(e.shiftKey&&!mod&&(k==='h'||k==='v')){e.preventDefault();act('flip',k);return}
@@ -1925,14 +2053,14 @@ function addSaved(id){
   const it=saved.find(x=>x.id===id);if(!it)return;pushUndo();
   const c=visibleCenter(),m=Math.min(W,H),target=Math.min(.45*m,Math.max(.15*m,.34*m*fitScale()/view.s)),f=target/Math.max(it.w,it.h);
   const g=it.shapes.length>1?gid():undefined;
-  const made=it.shapes.map(x=>({...JSON.parse(JSON.stringify(x)),id:'s'+(nid++),x:c.x+x.x*f,y:c.y+x.y*f,w:x.w*f,h:x.h*f,sw:(x.sw||0)*f,g,locked:false,hidden:false}));
+  const made=it.shapes.map(x=>({...JSON.parse(JSON.stringify(x)),id:'s'+(nid++),x:c.x+x.x*f,y:c.y+x.y*f,w:x.w*f,h:x.h*f,sw:(x.sw||0)*f,g,locked:false,hidden:false,ly:undefined}));
   // text saved with its path stays linked to the new copy of that path
   const km={};it.shapes.forEach((x,i)=>{if(x.key)km[x.key]=made[i].id});
   made.forEach(m=>{delete m.key;if(m.tp){if(km[m.tp.ref])m.tp.ref=km[m.tp.ref];else delete m.tp}});
   doc.shapes.push(...made);sel=made.map(x=>x.id);inG=null;refresh();toast(`Added ${it.name}`);
 }
 function saveSelection(){
-  const ss=doc.shapes.filter(x=>sel.includes(x.id)&&!x.hidden);if(!ss.length)return;
+  const ss=doc.shapes.filter(x=>sel.includes(x.id)&&!isH(x));if(!ss.length)return;
   const one=ss.length===1?ss[0]:null,def=one&&one.type==='text'?one.text:one&&one.type!=='path'?shapeN(one):`My shape ${saved.length+1}`;
   sheet(`<h2>Save to My shapes</h2><p class="note">${ss.length>1?`These ${ss.length} shapes are saved together and come back as a group.`:'This shape is saved with its colours.'} You’ll find it at the top of Shapes.</p>
     <label class="note" for="sName">Name</label><input class="tin" id="sName" value="${esc(def)}" autocomplete="off" maxlength="40">
@@ -2175,5 +2303,6 @@ setTimeout(()=>$('hint')?.remove(),7000);
 fit();refresh();showName();initLibrary();
 })();
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
 
 </script>
