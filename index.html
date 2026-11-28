@@ -89,20 +89,20 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .lytoggle .lyic svg{width:22px;height:22px}
 .lybar:not(.closed) .lytoggle .lyic{background:var(--ink);color:var(--panel)}
 .lytoggle .lyname{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
-.lylist{pointer-events:auto;display:flex;flex-direction:column;gap:6px;overflow:auto;scrollbar-width:none;padding:4px;margin:-4px}
+.lylist{pointer-events:auto;display:grid;grid-template-columns:max-content;justify-items:stretch;align-content:start;gap:5px;overflow:auto;scrollbar-width:none;padding:4px;margin:-4px}
 .lylist::-webkit-scrollbar{display:none}
 .lybar.closed .lylist{display:none}
-.lyrow{display:flex;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:0 3px 10px rgba(10,20,30,.13);height:44px;padding:0 3px;flex:0 0 auto;min-width:220px}
+.lyrow{display:flex;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:0 3px 10px rgba(10,20,30,.13);height:40px;padding:0 2px;flex:0 0 auto}
 .lyrow.act{border-color:var(--accent);background:var(--accent-soft)}
-.lyrow .lpick{flex:1;min-width:0;text-align:left;padding:0 10px;height:38px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:none;border:0;color:var(--ink);font-family:inherit}
+.lyrow .lpick{flex:1;min-width:0;max-width:46vw;text-align:left;padding:0 6px 0 12px;height:36px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:none;border:0;color:var(--ink);font-family:inherit}
 .lyrow .lpick small{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-left:6px}
 .lyrow.act .lpick{font-weight:600}
 .lyrow.dim .lpick{opacity:.45}
-.lyrow>button:not(.lpick){width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--accent);background:none;border:0;flex:0 0 auto}
+.lyrow>button:not(.lpick){width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--accent);background:none;border:0;flex:0 0 auto}
 .lyrow>button:not(.lpick):active{background:var(--sunk)}
-.lyrow svg{width:19px;height:19px}
+.lyrow svg{width:18px;height:18px}
 .lyrow button[aria-pressed="true"]{color:var(--ink)}
-.lyrow.tools{justify-content:space-around;min-width:0}
+.lyrow.tools{justify-content:flex-start;gap:2px;padding:0 3px}
 .lyrow.tools button:disabled{opacity:.3}
 @media (prefers-reduced-motion:no-preference){.lylist>*{animation:lyin .16s ease-out backwards}}
 @keyframes lyin{from{opacity:0;transform:translateY(-8px) scale(.94)}}
@@ -502,7 +502,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='27';
+const APP_VERSION='28';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -2303,6 +2303,7 @@ setTimeout(()=>$('hint')?.remove(),7000);
 fit();refresh();showName();initLibrary();
 })();
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
 
 
 </script>
