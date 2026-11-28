@@ -164,6 +164,20 @@ h3{font-family:var(--f-display);font-weight:500;font-size:12px;letter-spacing:.0
 .palbtns{display:flex;align-items:center;gap:6px}.palbtns .ib{width:36px;height:36px}.palbtns .ib svg{width:20px;height:20px}
 .palimg{border-radius:12px;overflow:hidden;background:var(--sunk);display:grid;place-items:center;max-height:180px}.palimg img{max-width:100%;max-height:180px;display:block}
 .pchip{aspect-ratio:1;border-radius:50%;border:1px solid rgba(0,0,0,.12);display:block}
+.autorow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 10px}
+.autorow .al{font-size:13px;color:var(--muted);white-space:nowrap}
+.autobtn{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--sunk);border:1px solid var(--line);min-width:0;font:inherit;color:var(--ink)}
+.autobtn b{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw}
+.apcols{display:flex;gap:2px;flex:0 0 auto}.apcols i{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.12);display:block}
+.apcols i.nx{box-shadow:0 0 0 2px var(--panel),0 0 0 3.5px var(--accent)}
+.aplist{display:grid;gap:6px;margin:8px 0}
+.aplist button{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:var(--sunk);border:1px solid transparent;text-align:left;font:inherit;color:var(--ink)}
+.aplist button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.aplist b{font-weight:600;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.autotog{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted)}
+.autotog[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.autochip{display:grid;place-items:center}.autochip span{width:26px;height:26px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 2px var(--accent)}
+.autochip.off span{border:0;box-shadow:none;background:conic-gradient(#264653,#2a9d8f,#e9c46a,#f4a261,#e76f51,#264653);opacity:.55;outline:2px dashed var(--muted);outline-offset:2px}
 .palhd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px}
 .palhd b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .palhd .ib{width:30px;height:30px}.palhd .ib svg{width:18px;height:18px}
@@ -515,7 +529,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='32';
+const APP_VERSION='33';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -814,7 +828,7 @@ function addShape(type){
   let w=a>=1?base:base*a, h=a>=1?base/a:base;
   // nudge so repeated adds don't stack exactly
   const off=(doc.shapes.filter(s=>Math.abs(s.x-c.x)<2&&Math.abs(s.y-c.y)<2).length)*24;
-  const s={id:'s'+(nid++),type,x:c.x+off,y:c.y+off,w,h,r:0,fx:1,fy:1,fill:lastFill,stroke:'none',sw:0,op:1};
+  const s={id:'s'+(nid++),type,x:c.x+off,y:c.y+off,w,h,r:0,fx:1,fy:1,fill:(type!=='text'&&autoNext())||lastFill,stroke:'none',sw:0,op:1};
   if(type==='text'){Object.assign(s,{text:'Tessera',font:'display',h:Math.round(Math.min(W,H)*.09),w:Math.round(Math.min(W,H)*.09*7*.58),fill:'#1b232d'})}
   doc.shapes.push(s);sel=[s.id];refresh();
   toast(`Added ${type==='text'?'text':DEF[type].n.toLowerCase()}`);
@@ -1270,7 +1284,7 @@ function finishPen(close){
   const w=Math.max(r-l,1),h=Math.max(b-t,1),cx=(l+r)/2,cy=(t+b)/2,L0=cx-w/2,T0=cy-h/2;
   c.forEach(p=>{for(const k of['x','ix','ox'])p[k]=(p[k]-L0)/w;for(const k of['y','iy','oy'])p[k]=(p[k]-T0)/h});
   pushUndo();
-  const sh={id:'s'+(nid++),type:'path',name:close?'Pen shape':'Line',pd:pdOf([c]),x:cx,y:cy,w,h,r:0,fx:1,fy:1,fill:close?lastFill:'none',stroke:penPrefs.stroke,sw:penSW(),op:1};
+  const sh={id:'s'+(nid++),type:'path',name:close?'Pen shape':'Line',pd:pdOf([c]),x:cx,y:cy,w,h,r:0,fx:1,fy:1,fill:close?(autoNext()||lastFill):'none',stroke:penPrefs.stroke,sw:penSW(),op:1};
   doc.shapes.push(sh);sel=[sh.id];refresh();toast(close?'Shape closed. Double-tap it to edit points':'Line finished. Double-tap it to edit points');
 }
 function pPen(){
@@ -1640,6 +1654,8 @@ function act(name,arg){
     case'gclear':pushUndo();doc.guides=[];toast('All guides removed');break;
     case'gdel':pushUndo();doc.guides=doc.guides.filter(g=>g.id!==arg);break;
     case'palnew':newPalSheet();return;
+    case'autopick':autoSheet();return;
+    case'palauto':setAuto(autoP()&&autoPal.id===arg?null:arg);return;
     case'palimg':$('palfile').click();return;
     case'palmore':palSheet(arg);return;
     case'paladd':{const pl=pals.find(x=>x.id===arg),c=hexN(styleT==='bg'?doc.bg:(selShapes()[0]?.[styleT]));if(!pl)return;if(!c)return toast('Pick a colour first');
@@ -1681,11 +1697,13 @@ function applyColor(c){
 
 // ---------- panels ----------
 const thumb=(type,size=32)=>{const a=DEF[type]?.a||1;const w=a>=1?size:size*a,h=a>=1?size/a:size;return `<svg viewBox="-20 -20 40 40"><path d="${scaleD(DEF[type].d,w,h)}" fill-rule="evenodd" fill="currentColor"/></svg>`};
+function autoRow(){const pl=autoP(),nx=autoPeek();
+  return `<div class="autorow"><span class="al">Auto colour</span><button class="autobtn" data-act="autopick" aria-label="Choose the palette for new shapes">${pl?`<span class="apcols">${pl.cols.map((c,i)=>`<i style="background:${c}" class="${c===nx&&i===(autoPal.i||0)%pl.cols.length?'nx':''}"></i>`).join('')}</span><b>${esc(pl.name)}</b>`:`<span class="chip" style="background:${lastFill}"></span><b>Off</b>`}<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button></div>`}
 function pShapes(){
-  if(collapsed&&!wide()){let h='<div class="strip">'+saved.map(it=>`<button data-addsaved="${it.id}" title="${esc(it.name)}" aria-label="Add ${esc(it.name)}" class="sv">${savedSVG(it)}</button>`).join('')+'<button data-add="text" title="Text" aria-label="Add text"><span class="txt">Aa</span></button>';
+  if(collapsed&&!wide()){let h='<div class="strip">'+(autoP()?`<button class="autochip" data-act="autopick" title="Auto colour from ${esc(autoP().name)}" aria-label="Auto colour from ${esc(autoP().name)}, next colour ${autoPeek()}"><span style="background:${autoPeek()}"></span></button>`:`<button class="autochip off" data-act="autopick" title="Auto colour: off" aria-label="Auto colour is off — choose a palette for new shapes"><span></span></button>`)+saved.map(it=>`<button data-addsaved="${it.id}" title="${esc(it.name)}" aria-label="Add ${esc(it.name)}" class="sv">${savedSVG(it)}</button>`).join('')+'<button data-add="text" title="Text" aria-label="Add text"><span class="txt">Aa</span></button>';
     for(const g in LIB)for(const k in LIB[g])h+=`<button data-add="${k}" title="${LIB[g][k].n}" aria-label="Add ${LIB[g][k].n}">${thumb(k)}</button>`;
     return h+'</div>'}
-  let h=`<div class="sec"><h3>My shapes</h3>`;
+  let h=autoRow()+`<div class="sec"><h3>My shapes</h3>`;
   h+=saved.length?`<div class="mylib">${saved.map(it=>`<div class="stile"><button class="sthumb" data-addsaved="${it.id}" title="Add ${esc(it.name)}" aria-label="Add ${esc(it.name)}">${savedSVG(it)}</button><span class="sname">${esc(it.name)}</span><button class="smore" data-smore="${it.id}" aria-label="Options for ${esc(it.name)}">${IC.more}</button></div>`).join('')}</div>`
     :`<p class="note">Select a shape or a few together, then tap <b>Save shape</b> in the quick menu to keep it here.</p>`;
   h+='</div>';
@@ -1721,7 +1739,7 @@ function pStyle(){
   {const ok=cur!=='none'&&hexN(cur);
    h+=`<div class="sec"><div class="lyhead"><h3>My palettes</h3><span class="palbtns"><button class="ib" data-act="palimg" title="Palette from an image" aria-label="Make a palette from an image">${IC.img}</button><button class="pbtn" data-act="palnew">${IC.plus}<span>New palette</span></button></span></div>`;
    if(!pals.length)h+=`<p class="note">Make palettes of your own colours to reuse across designs. You can paste hex codes or grab the colours already in this design.</p>`;
-   pals.forEach(pl=>{h+=`<div class="palhd"><b>${esc(pl.name)}</b><button class="ib" data-act="palmore" data-arg="${pl.id}" aria-label="Edit ${esc(pl.name)}" title="Edit palette">${IC.more}</button></div>
+   pals.forEach(pl=>{h+=`<div class="palhd"><b>${esc(pl.name)}</b><span class="palbtns"><button class="autotog" data-act="palauto" data-arg="${pl.id}" aria-pressed="${autoP()===pl}" title="Colour new shapes from this palette">${autoP()===pl?'✓ ':''}Auto</button><button class="ib" data-act="palmore" data-arg="${pl.id}" aria-label="Edit ${esc(pl.name)}" title="Edit palette">${IC.more}</button></span></div>
      <div class="sw">${palSwatches(pl.cols,'data-col',(cur||'').toLowerCase())}<button class="padd" data-act="paladd" data-arg="${pl.id}" title="${ok?'Add '+hexN(cur)+' to '+esc(pl.name):'Pick a colour first'}" aria-label="Add current colour to ${esc(pl.name)}" ${ok?'':'disabled'}>${IC.plus}</button></div>`});
    h+=`</div>`}
   if(styleT==='bg')h+=bgSec();
@@ -2086,6 +2104,23 @@ const PAL_SEED=[
   {id:'seed-navy-amber',name:'Navy & Amber',cols:['#0b1f3a','#1d3d6b','#5b7db1','#f6efe3','#f2b134','#d1741f']},
   {id:'seed-sage-clay',name:'Sage & Clay',cols:['#2f3e34','#5f8f5a','#a8c09a','#e8dcc4','#ae8f6c','#a4553d']}];
 const storePals=()=>DB.put('meta','palettes',pals);
+// auto colour: each new shape takes the next colour of the chosen palette, in turn
+let autoPal=(()=>{try{return JSON.parse(localStorage.getItem('tessera.autoPal'))||null}catch(e){return null}})();
+const saveAuto=()=>{try{localStorage.setItem('tessera.autoPal',JSON.stringify(autoPal))}catch(e){}};
+const autoP=()=>{const pl=autoPal&&pals.find(x=>x.id===autoPal.id);return pl&&pl.cols.length?pl:null};
+const autoPeek=()=>{const pl=autoP();return pl?pl.cols[(autoPal.i||0)%pl.cols.length]:null};
+function autoNext(){const pl=autoP();if(!pl)return null;const c=pl.cols[(autoPal.i||0)%pl.cols.length];autoPal.i=((autoPal.i||0)+1)%pl.cols.length;saveAuto();return c}
+function setAuto(id){autoPal=id?{id,i:0}:null;saveAuto();renderPanel();const pl=autoP();toast(pl?`New shapes now take colours from ${pl.name}, one after another`:'Auto colour off — new shapes use your last fill colour')}
+function autoSheet(){
+  const pl=autoP();
+  sheet(`<h2>Colour new shapes</h2><p class="note">Pick a palette and every shape you add takes its next colour, going round the palette in order.</p>
+    <div class="list"><button data-s="pick" data-v="" aria-pressed="${!pl}">${!pl?'✓ ':''}Off — use my last fill colour</button></div>
+    <div class="aplist">${pals.filter(x=>x.cols.length).map(x=>`<button data-s="pick" data-v="${x.id}" aria-pressed="${pl===x}"><b>${pl===x?'✓ ':''}${esc(x.name)}</b><span class="apcols">${x.cols.map(c=>`<i style="background:${c}"></i>`).join('')}</span></button>`).join('')}</div>
+    ${pl?`<div class="btns"><button data-s="restart">Start again from the first colour</button></div>`:''}
+    <div class="btns"><button data-s="x">Close</button></div>`,
+  (a,v)=>{if(a==='x')return closeSheet();if(a==='restart'){autoPal.i=0;saveAuto();closeSheet();renderPanel();return toast('Next shape gets the first colour')}
+    if(a==='pick'){closeSheet();setAuto(v||null)}});
+}
 const hexN=c=>{c=String(c||'').trim().toLowerCase();if(/^#?[0-9a-f]{3}$/.test(c)){c=c.replace('#','');c='#'+c[0]+c[0]+c[1]+c[1]+c[2]+c[2]}else if(/^#?[0-9a-f]{6}$/.test(c))c='#'+c.replace('#','');else return null;return c};
 const hexesIn=t=>[...new Set((String(t).match(/#?\b[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g)||[]).map(hexN).filter(Boolean))];
 const designCols=()=>[...new Set(doc.shapes.flatMap(s=>[s.fill,s.stroke]).map(hexN).filter(Boolean))];
@@ -2425,6 +2460,7 @@ setTimeout(()=>$('hint')?.remove(),7000);
 fit();refresh();showName();initLibrary();
 })();
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
 
 
 
