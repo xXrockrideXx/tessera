@@ -105,6 +105,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .lyrow button[aria-pressed="true"]{color:var(--ink)}
 .lyrow.tools{justify-content:space-evenly;padding:0 3px}
 .lyrow.tools button:disabled{opacity:.3}
+.lyrow.tools button.on{background:var(--ink);color:var(--panel)}
+.lymore{display:grid;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:0 3px 10px rgba(10,20,30,.13);padding:6px}
+.lymore .tin{box-sizing:border-box;width:100%;margin:0 0 4px;font-size:14px;padding:8px 10px}
+.lymore button{text-align:left;padding:9px 10px;border-radius:10px;font-size:14px;background:none;border:0;color:var(--ink);font-family:inherit}
+.lymore button:active{background:var(--sunk)}.lymore button:disabled{opacity:.35}
+.lymore button.danger{color:var(--danger)}.lymore button.sub{color:var(--muted);font-size:13px}
 @media (prefers-reduced-motion:no-preference){.lylist>*{animation:lyin .16s ease-out backwards}}
 @keyframes lyin{from{opacity:0;transform:translateY(-8px) scale(.94)}}
 .hint{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:52px;font-size:12px;color:var(--muted);max-width:60%}
@@ -529,7 +535,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='33';
+const APP_VERSION='34';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -784,6 +790,7 @@ function renderCanvas(){
   $('zoom').textContent=Math.round(view.s*100/ fitScale()*100)/100+'%';
   $('zoom').textContent=Math.round(view.s/fitScale()*100)+'%';
 }
+let lyMore=false;
 let lyOpen=(()=>{try{return localStorage.getItem('tessera.lyOpen')==='1'}catch(e){return false}})();
 function renderLyMenu(){
   const bar=$('lybar');if(!bar||!doc.layers)return;
@@ -792,7 +799,13 @@ function renderLyMenu(){
   $('lyActName').textContent=al?al.name:'Layers';
   if(!lyOpen){$('lylist').innerHTML='';fitLyText([$('lyActName')]);return}
   const q=selShapes(),cnt=id=>doc.shapes.filter(s=>s.ly===id).length;
-  let h=`<div class="lyrow tools"><button data-la="lyadd" title="New layer" aria-label="New layer">${IC.plus}</button><button data-la="lyord" data-arg="up" title="Move active layer up" aria-label="Move active layer up" ${ai<L.length-1?'':'disabled'}>${IC.lyup}</button><button data-la="lyord" data-arg="down" title="Move active layer down" aria-label="Move active layer down" ${ai>0?'':'disabled'}>${IC.lydown}</button><button data-la="lyopen" title="More layer options" aria-label="More layer options">${IC.more}</button></div>`;
+  let h=`<div class="lyrow tools"><button data-la="lyadd" title="New layer" aria-label="New layer">${IC.plus}</button><button data-la="lyord" data-arg="up" title="Move active layer up" aria-label="Move active layer up" ${ai<L.length-1?'':'disabled'}>${IC.lyup}</button><button data-la="lyord" data-arg="down" title="Move active layer down" aria-label="Move active layer down" ${ai>0?'':'disabled'}>${IC.lydown}</button><button data-la="lymore" title="More layer options" aria-label="More layer options" aria-expanded="${lyMore}" class="${lyMore?'on':''}">${IC.more}</button></div>`;
+  if(lyMore){const n=cnt(al.id);h+=`<div class="lymore"><input class="tin" id="lyRen" value="${esc(al.name)}" maxlength="40" autocomplete="off" enterkeyhint="done" aria-label="Rename ${esc(al.name)}">
+    <button data-la="lyselall" ${n?'':'disabled'}>Select all on layer</button>
+    <button data-la="lydup">Duplicate layer</button>
+    <button data-la="lymerge" ${ai>0?'':'disabled'}>Merge down</button>
+    <button data-la="lydel" class="danger" ${L.length>1?'':'disabled'}>Delete layer</button>
+    <button data-la="lyopen" class="sub">All layer settings…</button></div>`}
   [...L].reverse().forEach(l=>{const on=l.id===doc.aly,mv=q.length&&q.some(s=>s.ly!==l.id);
     h+=`<div class="lyrow ${on?'act':''} ${l.hidden?'dim':''}"><button class="lpick" data-la="lyset" data-arg="${l.id}" aria-pressed="${on}"><span class="t">${esc(l.name)}</span><small>${cnt(l.id)}</small></button>${mv?`<button data-la="lymove" data-arg="${l.id}" title="Move selection to ${esc(l.name)}" aria-label="Move selection to ${esc(l.name)}">${IC.movehere}</button>`:''}<button data-la="lylock" data-arg="${l.id}" aria-pressed="${!!l.locked}" title="${l.locked?'Unlock':'Lock'} ${esc(l.name)}" aria-label="${l.locked?'Unlock':'Lock'} ${esc(l.name)}">${l.locked?IC.lock:IC.unlock}</button><button data-la="lyvis" data-arg="${l.id}" title="${l.hidden?'Show':'Hide'} ${esc(l.name)}" aria-label="${l.hidden?'Show':'Hide'} ${esc(l.name)}">${l.hidden?IC.eyeoff:IC.eye}</button></div>`});
   $('lylist').innerHTML=h;
@@ -1972,10 +1985,14 @@ panel.addEventListener('focusout',()=>{setTimeout(()=>{if(!panel.contains(docume
 panel.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input'))e.target.blur()});
 
 $('lyToggle').querySelector('.lyic').innerHTML=IC.layers;
-$('lyToggle').addEventListener('click',()=>setLyOpen(!lyOpen));
+$('lyToggle').addEventListener('click',()=>{lyMore=false;setLyOpen(!lyOpen)});
 $('lylist').addEventListener('click',e=>{const b=e.target.closest('[data-la]');if(!b||b.disabled)return;e.stopPropagation();
-  if(b.dataset.la==='lyopen'){openTab('layers');renderPanel();return}
+  if(b.dataset.la==='lymore'){lyMore=!lyMore;renderLyMenu();return}
+  if(b.dataset.la==='lyopen'){lyMore=false;openTab('layers');renderPanel();renderLyMenu();return}
   act(b.dataset.la,b.dataset.arg)});
+$('lylist').addEventListener('input',e=>{if(e.target.id!=='lyRen')return;const l=doc.layers.find(x=>x.id===doc.aly);if(!l)return;if(!editing){pushUndo();editing=true}l.name=e.target.value.slice(0,40);$('lyActName').textContent=l.name;const t=$('lylist').querySelector('.lyrow.act .lpick .t');if(t)t.textContent=l.name});
+$('lylist').addEventListener('change',e=>{if(e.target.id!=='lyRen')return;const l=doc.layers.find(x=>x.id===doc.aly);if(l&&!l.name.trim())l.name='Layer';editing=false;save();renderPanel();renderLyMenu()});
+$('lylist').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='lyRen')e.target.blur()});
 ['pointerdown','touchstart','wheel'].forEach(t=>$('lybar').addEventListener(t,e=>e.stopPropagation(),{passive:true}));
 // ---------- top bar ----------
 $('bPen').innerHTML=IC.pen;$('bPen').onclick=()=>{if(pen){pen.pts.length>=2?finishPen(false):cancelPen()}else startPen()};
@@ -2460,6 +2477,7 @@ setTimeout(()=>$('hint')?.remove(),7000);
 fit();refresh();showName();initLibrary();
 })();
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
 
 
 
