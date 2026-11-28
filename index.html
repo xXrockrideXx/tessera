@@ -318,6 +318,7 @@ select.tin{padding:8px 10px}
     <button class="ib" id="bSnap" aria-label="Smart snapping" title="Smart snapping (guides, 15° rotation)"></button>
     <button class="ib" id="bMulti" aria-label="Multi-select" title="Multi-select: tap to add shapes"></button>
     <button class="ib" id="bPen" aria-label="Pen: draw lines and curves" title="Pen: draw lines and curves (P)"></button>
+    <button class="ib" id="bMeas" aria-label="Measure" title="Measure lengths (M)"></button>
     <div class="sp"></div>
     <button class="ib" id="bDup" aria-label="Duplicate" title="Duplicate (Ctrl+D)"></button>
     <button class="ib" id="bDel" aria-label="Delete" title="Delete"></button>
@@ -463,6 +464,7 @@ const IC={
  repeat:I('<circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="4.5" r="2.2"/><circle cx="18.5" cy="8.3" r="2.2"/><circle cx="18.5" cy="15.7" r="2.2"/><circle cx="12" cy="19.5" r="2.2"/><circle cx="5.5" cy="15.7" r="2.2"/><circle cx="5.5" cy="8.3" r="2.2"/>'),
  bookmark:I('<path d="M7 3h10a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z"/><path d="M12 7v6M9 10h6"/>'),
  gang:I('<path d="M4 20 20 6" /><path d="M4 20h16" stroke-opacity=".5"/><path d="M11 20a7 7 0 0 0-1.6-4.4" />'),
+ ruler:I('<path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l1.5 1.5M13 7l2 2"/>'),
  pen:I('<path d="M12 3 7 13l5 8 5-8z"/><circle cx="12" cy="13" r="1.6"/><path d="M12 3v8.4"/>'),
  tpath:I('<path d="M3 18C6 9 18 9 21 18" stroke-dasharray="2.5 2.5"/><path d="M7 12.5 9 8m-1.6 1.4h3M12 7v4.6m-1.4-4.6h2.8M15.5 8.6l1.6 4"/>'),
  bsplit:I('<path d="M4 4h7v7H4zM13 13h7v7h-7z" fill="currentColor" fill-opacity=".3"/><path d="M14 4l6 6M20 4l-6 6" stroke-opacity=".5"/>'),
@@ -535,7 +537,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='34';
+const APP_VERSION='35';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -781,7 +783,7 @@ function renderCanvas(){
   if(rp&&(ep||sb||!sel.length||sel.length!==rp.ids.length||rp.ids.some(id=>!sel.includes(id))))rp=null;
   world.setAttribute('transform',`matrix(${view.s} 0 0 ${view.s} ${view.tx} ${view.ty})`);
   world.innerHTML=`<defs><clipPath id="artclip"><rect width="${W}" height="${H}"/></clipPath></defs><rect class="artshadow" x="0" y="0" width="${W}" height="${H}" fill="${doc.bg}"/>`+bgImgSVG(false)+
-    gridSVG()+`<g clip-path="none">${shapesSVG()}</g>`+guidesSVG()+overlay();
+    gridSVG()+`<g clip-path="none">${shapesSVG()}</g>`+guidesSVG()+measuresSVG()+overlay();
   let tpChanged=false;
   for(const s of doc.shapes){if(!isPathText(s))continue;const el=world.querySelector(`[data-id="${s.id}"] text`);if(!el)continue;
     try{const b=el.getBBox(),nb={l:b.x,t:b.y,r:b.x+b.width,b:b.y+b.height},ob=tpBox[s.id];
@@ -816,9 +818,9 @@ function fitLyText(els){els.forEach(el=>{if(!el)return;el.style.fontSize='';el.s
   el.style.whiteSpace=''})}
 function setLyOpen(v){lyOpen=v;try{localStorage.setItem('tessera.lyOpen',v?'1':'0')}catch(e){}renderLyMenu()}
 function renderTop(){renderLyMenu();
-  $('bPen').setAttribute('aria-pressed',!!pen);
+  $('bPen').setAttribute('aria-pressed',!!pen);$('bMeas').setAttribute('aria-pressed',!!meas);
   $('bUndo').disabled=sb?!sb.hist.length:!undo.length;$('bRedo').disabled=!!sb||!redo.length;
-  $('bDup').disabled=$('bDel').disabled=!sel.length||!!sb;
+  $('bDup').disabled=!sel.length||!!sb;$('bDel').disabled=(!sel.length&&!mSel)||!!sb;
   $('bSnap').setAttribute('aria-pressed',snapOn);$('bMulti').setAttribute('aria-pressed',multi);
   const qb=$('qbar'),show=sel.length>0&&!ep&&!sb&&selShapes().some(s=>!isL(s));qb.hidden=!show;$('qBuild').hidden=selShapes().filter(s=>s.type!=='text').length<2;$('qGroup').hidden=sel.length<2||oneGroup();$('qUngroup').hidden=!selShapes().some(s=>s.g);{const q=selShapes();$('qTp').hidden=!(q.length===2&&q.filter(x=>x.type==='text').length===1)}if(show)$('hint')?.remove();
 }
@@ -928,6 +930,11 @@ cv.addEventListener('pointerdown',e=>{
   if(e.button===1||e.button===2||spaceDown){drag={mode:'pan',sx:e.clientX,sy:e.clientY,tx:view.tx,ty:view.ty};return}
   const hEl=e.target.closest('[data-h]'), sEl=e.target.closest('[data-id]'), gEl=e.target.closest('[data-g]');
   const prev=snap();
+  {const mhEl=e.target.closest('[data-mh]'),mEl=e.target.closest('[data-m]');
+   if(mhEl&&mSel&&mById(mSel)){drag={mode:'mend',m:mById(mSel),end:mhEl.dataset.mh,prev,sx:e.clientX,sy:e.clientY};return}
+   if(mEl&&!pen&&!ep&&!sb){mSel=mEl.dataset.m;sel=[];inG=null;drag={mode:'mtap',id:mSel,prev,sx:e.clientX,sy:e.clientY};renderAfterSel();return}
+   if(meas){const A=mSnap(P,null,false,null);mSel=null;meas.hover=null;drag={mode:'mnew',m:{id:'m'+Date.now().toString(36)+(nid++),x1:A.x,y1:A.y,x2:A.x,y2:A.y},prev,sx:e.clientX,sy:e.clientY};renderCanvas();return}
+   if(mSel)mSel=null;}
   if(pen){
     const near=p=>Math.hypot(p.x-P.x,p.y-P.y)<16/view.s,n=pen.pts.length;
     if(n>=3&&near(pen.pts[0])){finishPen(true);return}
@@ -992,6 +999,10 @@ cv.addEventListener('pointermove',e=>{
   if(!drag)return;
   const P=toWorld(e.clientX,e.clientY);
   if(drag.mode==='pan'){view.tx=drag.tx+e.clientX-drag.sx;view.ty=drag.ty+e.clientY-drag.sy;view.auto=false;renderCanvas();return}
+  if(drag.mode==='mnew'){const m=drag.m,Q=mSnap(P,{x:m.x1,y:m.y1},e.shiftKey,null);m.x2=Q.x;m.y2=Q.y;drag.changed=true;renderCanvas();return}
+  if(drag.mode==='mend'){const m=drag.m,o=drag.end==='1'?{x:m.x2,y:m.y2}:{x:m.x1,y:m.y1},Q=mSnap(P,o,e.shiftKey,m.id);if(drag.end==='1'){m.x1=Q.x;m.y1=Q.y}else{m.x2=Q.x;m.y2=Q.y}drag.changed=true;renderCanvas();return}
+  if(drag.mode==='mtap'){if(!drag.changed&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<5)return;const m=mById(drag.id);if(!m)return;if(!drag.P0){drag.P0=P;drag.o={...m}}drag.changed=true;
+    const dx=P.x-drag.P0.x,dy=P.y-drag.P0.y;m.x1=drag.o.x1+dx;m.y1=drag.o.y1+dy;m.x2=drag.o.x2+dx;m.y2=drag.o.y2+dy;renderCanvas();return}
   if(drag.mode==='move'){
     let dx=P.x-drag.P0.x, dy=P.y-drag.P0.y;
     if(Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<3&&!drag.changed)return;
@@ -1137,6 +1148,13 @@ function endPtr(e){
   ptrs.delete(e.pointerId);
   if(pinch){if(ptrs.size<2)pinch=null;return}
   if(!drag)return;
+  if(drag.mode==='mnew'){const m=drag.m,pv=drag.prev;drag=null;guides={x:null,y:null};
+    if(mLen(m)*view.s<8){renderCanvas();return}
+    doc.measures=doc.measures||[];doc.measures.push(m);pushUndo(pv);mSel=m.id;refresh();
+    if(!mmPerPx()&&doc.measures.length===1)toast('Tap the length label to enter this line’s real length');return}
+  if(drag.mode==='mend'||drag.mode==='mtap'){const d=drag;drag=null;guides={x:null,y:null};
+    if(d.changed){pushUndo(d.prev);refresh();return}
+    if(d.mode==='mtap')measSheet(d.id);renderAfterSel();return}
   if(drag.mode==='penend'){drag=null;finishPen(false);return}
   if(drag.mode==='pen'){drag=null;renderAfterSel();return}
   if(drag.mode==='sb'){drag=null;sbApply();renderAfterSel();return}
@@ -1251,13 +1269,86 @@ function enterEdit(id){
 }
 function exitEdit(){if(!ep)return;ep=null;refresh()}
 
+// ---------- measure: lines that show their length, in real units once one is known ----------
+let meas=null,mSel=null;
+const MU={mm:1,cm:10,m:1000,in:25.4,ft:304.8},MC='#e8590c';
+const mLen=m=>Math.hypot(m.x2-m.x1,m.y2-m.y1);
+const mById=id=>(doc.measures||[]).find(m=>m.id===id);
+function mmPerPx(){const sc=doc.mscale;if(!sc)return null;if(sc.ref){const r=mById(sc.ref);if(r&&mLen(r)>0)return sc.len*MU[sc.unit]/mLen(r)}return sc.mmPx||null}
+const mUnit=()=>doc.mscale?(doc.mscale.show||doc.mscale.unit):'px';
+function fmtNum(v){return v>=100?String(Math.round(v)):v>=10?v.toFixed(1):v.toFixed(2)}
+function fmtLen(px){const k=mmPerPx();if(!k)return `${Math.round(px)} px`;const u=mUnit();return `${fmtNum(px*k/MU[u])} ${u}`}
+function startMeasure(){if(pen)cancelPen();sel=[];ep=null;sb=null;rp=null;inG=null;meas={hover:null};doc.mshow=true;renderAfterSel();
+  toast((doc.measures||[]).length?'Measure: drag to draw another line':'Measure: drag across something to measure it')}
+function endMeasure(){meas=null;guides={x:null,y:null};renderAfterSel()}
+function mSnap(P,from,shift,skip){
+  let Q={x:P.x,y:P.y};guides={x:null,y:null};const step=a=>Math.round(a/(Math.PI/12))*(Math.PI/12);
+  if(shift&&from){const d=Math.hypot(Q.x-from.x,Q.y-from.y),a=step(Math.atan2(Q.y-from.y,Q.x-from.x));return{x:from.x+d*Math.cos(a),y:from.y+d*Math.sin(a)}}
+  if(!snapOn)return Q;
+  // points first: shape corners, edge middles and centres, canvas corners, other measure ends
+  const pts=[[0,0],[W,0],[0,H],[W,H],[W/2,H/2]];
+  doc.shapes.forEach(s=>{if(isH(s))return;const b=aabb(s),cx=(b.l+b.r)/2,cy=(b.t+b.b)/2;pts.push([b.l,b.t],[b.r,b.t],[b.l,b.b],[b.r,b.b],[cx,b.t],[cx,b.b],[b.l,cy],[b.r,cy],[cx,cy])});
+  (doc.measures||[]).forEach(m=>{if(m.id!==skip)pts.push([m.x1,m.y1],[m.x2,m.y2])});
+  let best=null,bd=12/view.s;for(const[x,y]of pts){const d=Math.hypot(x-Q.x,y-Q.y);if(d<bd){bd=d;best={x,y}}}
+  if(best)return best;
+  const[ax,gx]=bestSnap([Q.x],snapTargets('x',[])),[ay,gy]=bestSnap([Q.y],snapTargets('y',[]));if(ax!=null){Q.x+=ax;guides.x=gx}if(ay!=null){Q.y+=ay;guides.y=gy}
+  if(from&&guides.x==null&&guides.y==null&&SN.rot){const d=Math.hypot(Q.x-from.x,Q.y-from.y),a0=Math.atan2(Q.y-from.y,Q.x-from.x),a=step(a0);if(d>0&&Math.abs(a0-a)*d<7/view.s)Q={x:from.x+d*Math.cos(a),y:from.y+d*Math.sin(a)}}
+  return Q}
+function measSVG(m,k,on,exp){
+  const L=mLen(m),ux=L?(m.x2-m.x1)/L:1,uy=L?(m.y2-m.y1)/L:0,nx=-uy,ny=ux,t=7*k,mx=(m.x1+m.x2)/2,my=(m.y1+m.y2)/2;
+  const ref=doc.mscale&&doc.mscale.ref===m.id,txt=(ref?'✓ ':'')+fmtLen(L),fs=12*k,tw=(txt.length*7.3+14)*k,th=fs+9*k;
+  let ang=Math.atan2(uy,ux)*180/Math.PI;if(ang>90)ang-=180;if(ang<-90)ang+=180;
+  const pe=exp?'':' pointer-events="none"',sw=(on?2.4:1.6)*k;
+  let o=`<g${exp?'':` data-m="${m.id}"`}>`;
+  if(!exp)o+=`<line x1="${m.x1}" y1="${m.y1}" x2="${m.x2}" y2="${m.y2}" stroke="transparent" stroke-width="${20*k}" pointer-events="stroke" style="cursor:pointer"/>`;
+  o+=`<line x1="${m.x1}" y1="${m.y1}" x2="${m.x2}" y2="${m.y2}" stroke="${MC}" stroke-width="${sw}"${pe}/>`;
+  for(const[x,y]of[[m.x1,m.y1],[m.x2,m.y2]])o+=`<line x1="${x+nx*t}" y1="${y+ny*t}" x2="${x-nx*t}" y2="${y-ny*t}" stroke="${MC}" stroke-width="${sw}"${pe}/>`;
+  if(L*(exp?1:view.s)>=14||exp)o+=`<g transform="translate(${mx} ${my}) rotate(${ang})"${exp?'':' data-ml="1" style="cursor:pointer"'}><rect x="${-tw/2}" y="${-th/2}" width="${tw}" height="${th}" rx="${th/2}" fill="${ref?MC:'#fff'}" stroke="${MC}" stroke-width="${1.2*k}"/><text x="0" y="0" font-size="${fs}" fill="${ref?'#fff':MC}" text-anchor="middle" dominant-baseline="central" font-family="JetBrains Mono, ui-monospace, monospace" font-weight="600">${esc(txt)}</text></g>`;
+  if(on&&!exp)for(const[x,y,e]of[[m.x1,m.y1,1],[m.x2,m.y2,2]])o+=`<circle cx="${x}" cy="${y}" r="${7*k}" fill="#fff" stroke="${MC}" stroke-width="${2*k}" data-mh="${e}" style="cursor:move"/><circle cx="${x}" cy="${y}" r="${18*k}" fill="transparent" data-mh="${e}" style="cursor:move"/>`;
+  return o+'</g>'}
+function measuresSVG(){
+  const k=1/view.s,M=doc.measures||[],live=drag&&drag.mode==='mnew'?drag.m:null;let o='';
+  if(doc.mshow!==false||meas){for(const m of M)o+=measSVG(m,k,mSel===m.id||(drag&&drag.m===m),false);if(live)o+=measSVG(live,k,true,false)}
+  if(meas&&meas.hover&&!drag){const h=meas.hover;o+=`<g pointer-events="none" stroke="${MC}" stroke-width="${1.5*k}"><circle cx="${h.x}" cy="${h.y}" r="${6*k}" fill="none"/><line x1="${h.x-11*k}" y1="${h.y}" x2="${h.x+11*k}" y2="${h.y}"/><line x1="${h.x}" y1="${h.y-11*k}" x2="${h.x}" y2="${h.y+11*k}"/></g>`}
+  return o?`<g class="meas">${o}</g>`:''}
+function delMeasure(id){const m=mById(id);if(!m)return;pushUndo();
+  if(doc.mscale&&doc.mscale.ref===id){const k=mmPerPx();doc.mscale=k?{mmPx:k,unit:doc.mscale.unit,show:doc.mscale.show}:null}
+  doc.measures=doc.measures.filter(x=>x.id!==id);if(mSel===id)mSel=null;refresh();toast('Measure line deleted')}
+let mUnitPick=null;
+function measSheet(id){
+  const m=mById(id);if(!m)return;const px=mLen(m),k=mmPerPx(),sc=doc.mscale,isRef=sc&&sc.ref===id;
+  const u=mUnitPick||(sc&&sc.unit)||'mm';
+  const val=isRef?sc.len:'';
+  sheet(`<h2>Measure line</h2>
+    <p class="note" style="margin-top:0">${k?`About <b>${fmtLen(px)}</b> long (${Math.round(px)} px on the canvas).`:`<b>${Math.round(px)} px</b> long on the canvas.`}${isRef?' This is your known length.':''}</p>
+    <label class="note" for="mVal">${isRef?'Known length':'If you know its real length, type it here'}</label>
+    <div class="row" style="gap:8px"><input class="tin" id="mVal" type="number" inputmode="decimal" step="any" min="0" value="${val}" placeholder="e.g. 900" style="flex:1;min-width:0;margin:0">
+      <div class="seg" role="group" aria-label="Unit">${Object.keys(MU).map(x=>`<button data-s="u" data-v="${x}" aria-pressed="${u===x}">${x}</button>`).join('')}</div></div>
+    <div class="btns"><button class="pbtn" data-s="set">Set as known length</button>${sc?`<button data-s="clear">Clear scale</button>`:''}</div>
+    ${sc?`<label class="note">Show all lengths in</label><div class="seg" role="group">${Object.keys(MU).map(x=>`<button data-s="show" data-v="${x}" aria-pressed="${mUnit()===x}">${x}</button>`).join('')}</div>`:''}
+    <p class="note">Set one line you know — a door, a tile, a ruler in the photo — and every other measure line shows its estimated length.</p>
+    <div class="list"><button data-s="del" class="danger">${IC.del}Delete this line</button>${(doc.measures||[]).length>1?`<button data-s="delall" class="danger">${IC.del}Delete all measure lines</button>`:''}</div>
+    <div class="btns"><button data-s="x">Close</button></div>`,
+  (a,v)=>{
+    if(a==='x'){mUnitPick=null;return closeSheet()}
+    if(a==='u'){const keep=$('mVal').value;mUnitPick=v;measSheet(id);$('mVal').value=keep;return}
+    if(a==='set'){const n=parseFloat($('mVal').value);if(!(n>0))return toast('Type the real length first');pushUndo();doc.mscale={ref:id,len:n,unit:u,show:u};mUnitPick=null;closeSheet();refresh();toast(`Scale set: this line is ${fmtNum(n)} ${u}`);return}
+    if(a==='show'){doc.mscale.show=v;save();renderCanvas();renderPanel();measSheet(id);return}
+    if(a==='clear'){pushUndo();doc.mscale=null;closeSheet();refresh();toast('Scale cleared — lengths are in px again');return}
+    if(a==='del'){closeSheet();delMeasure(id);return}
+    if(a==='delall'){closeSheet();pushUndo();doc.measures=[];doc.mscale=null;mSel=null;refresh();toast('All measure lines deleted — undo brings them back')}
+  });
+  setTimeout(()=>{if(!isRef)$('mVal')?.blur()},80);
+}
+cv.addEventListener('pointermove',e=>{if(!meas||ptrs.size)return;meas.hover=mSnap(toWorld(e.clientX,e.clientY),null,false,null);renderCanvas()});
+
 // ---------- pen: draw lines and curves ----------
 let pen=null,penPrefs={stroke:'#1b232d',sw:0};
 try{Object.assign(penPrefs,JSON.parse(localStorage.getItem('tessera.pen')||'{}'))}catch(e){}
 const penSW=()=>penPrefs.sw||Math.max(2,Math.round(Math.min(W,H)*.006));
 const penSavePrefs=()=>{try{localStorage.setItem('tessera.pen',JSON.stringify(penPrefs))}catch(e){}};
 function startPen(){
-  if(pen)return;sel=[];ep=null;sb=null;rp=null;inG=null;pen={pts:[],hover:null,step:null};setCollapsed(false,true);
+  if(pen)return;meas=null;mSel=null;sel=[];ep=null;sb=null;rp=null;inG=null;pen={pts:[],hover:null,step:null};setCollapsed(false,true);
   renderAfterSel();toast('Pen: tap for sharp points, drag for curves');
 }
 function cancelPen(){if(!pen)return;pen=null;guides={x:null,y:null};angHit=null;renderAfterSel();toast('Pen put away')}
@@ -1337,7 +1428,7 @@ function setNodeType(ci,i,t){
   }
   n.t=t;
 }
-function epCheck(){if(ep){const s=byId(ep.id);if(!s||s.type!=='path'||sel.length!==1||sel[0]!==ep.id)ep=null}const b=$('epDone');b.hidden=!ep&&!sb&&!pen;b.textContent=pen?(pen.pts.length>=2?'Finish line':'Put pen away'):sb?'Done building':ep&&ep.multi?'Done selecting points':'Done editing points'}
+function epCheck(){if(ep){const s=byId(ep.id);if(!s||s.type!=='path'||sel.length!==1||sel[0]!==ep.id)ep=null}const b=$('epDone');b.hidden=!ep&&!sb&&!pen&&!meas;b.textContent=meas?'Done measuring':pen?(pen.pts.length>=2?'Finish line':'Put pen away'):sb?'Done building':ep&&ep.multi?'Done selecting points':'Done editing points'}
 function epOverlay(k,A){
   const s=byId(ep.id);let o=`<g transform="translate(${s.x} ${s.y}) rotate(${s.r}) scale(${s.fx} ${s.fy})" pointer-events="none"><path d="${scaleD(s.pd,s.w,s.h)}" fill="none" stroke="${A}" stroke-width="${1.3*k}" fill-rule="evenodd"/></g>`;
   const W_=(u,v)=>worldOf(s,u,v);
@@ -1560,7 +1651,7 @@ function act(name,arg){
   const ss=selShapes();
   switch(name){
     case'dup':{if(!ss.length)return;pushUndo();const k=snapOn?20:16,gm={};const idm={};const cl=ss.map(s=>{const n={...JSON.parse(JSON.stringify(s)),id:'s'+(nid++),x:s.x+k,y:s.y+k,locked:false,g:s.g?(gm[s.g]=gm[s.g]||gid()):undefined};idm[s.id]=n.id;return n});cl.forEach(n=>{if(n.tp&&idm[n.tp.ref])n.tp.ref=idm[n.tp.ref]});doc.shapes.push(...cl);sel=cl.map(s=>s.id);toast(cl.length>1?`Duplicated ${cl.length} shapes`:'Duplicated');break}
-    case'del':{if(!ss.length)return;pushUndo();doc.shapes=doc.shapes.filter(s=>!sel.includes(s.id));toast(ss.length>1?`Deleted ${ss.length} shapes`:'Deleted');sel=[];break}
+    case'del':{if(!ss.length){if(mSel)delMeasure(mSel);return}pushUndo();doc.shapes=doc.shapes.filter(s=>!sel.includes(s.id));toast(ss.length>1?`Deleted ${ss.length} shapes`:'Deleted');sel=[];break}
     case'align':{if(!ss.length)return;pushUndo();
       const mode=ss.length===1?'canvas':alignTo, ks=keyShape();
       const box=mode==='canvas'?{l:0,r:W,t:0,b:H}:mode==='key'&&ks?aabb(ks):union(ss);
@@ -1667,6 +1758,12 @@ function act(name,arg){
     case'gclear':pushUndo();doc.guides=[];toast('All guides removed');break;
     case'gdel':pushUndo();doc.guides=doc.guides.filter(g=>g.id!==arg);break;
     case'palnew':newPalSheet();return;
+    case'mtool':meas?endMeasure():startMeasure();return;
+    case'mshow':doc.mshow=doc.mshow===false;if(!doc.mshow)mSel=null;break;
+    case'mexp':doc.mexp=!doc.mexp;toast(doc.mexp?'Measure lines will be included in exports':'Measure lines left out of exports');break;
+    case'munit':if(doc.mscale)doc.mscale.show=arg;break;
+    case'mclear':pushUndo();doc.mscale=null;toast('Scale cleared — lengths are in px again');break;
+    case'mdelall':pushUndo();doc.measures=[];doc.mscale=null;mSel=null;toast('All measure lines deleted — undo brings them back');break;
     case'autopick':autoSheet();return;
     case'palauto':setAuto(autoP()&&autoPal.id===arg?null:arg);return;
     case'palimg':$('palfile').click();return;
@@ -1815,7 +1912,7 @@ function pArrange(){
   if(n>=2||hasG)h+=`<div class="sec"><h3>Group</h3><div class="btns">${n>=2&&!oneGroup()?B('group','','bgroup','Group'):''}${hasG?B('ungroup','','bungroup','Ungroup'):''}</div>${oneGroup()?'<p class="note">Tap any part to pick up the whole group. Double-tap to work on one shape inside it.</p>':''}</div>`;
   if(one){const f=v=>Math.round(v);h+=`<div class="sec"><h3>Position &amp; size</h3><div class="num">
     ${[['x','X',f(one.x)],['y','Y',f(one.y)],['w','W',f(one.w)],['h','H',f(one.h)],['r','°',f(one.r)]].map(([k,l,v])=>`<label>${l}<input type="number" inputmode="decimal" id="n-${k}" data-k="${k}" value="${v}"></label>`).join('')}
-    </div><div class="btns"><button data-act="ratio" aria-pressed="${lockRatio}">${IC.ratio}<span>Keep proportions</span></button></div></div>`}
+    </div>${mmPerPx()?`<p class="note">Real size ≈ ${fmtLen(one.w)} × ${fmtLen(one.h)} (from your measure scale)</p>`:''}<div class="btns"><button data-act="ratio" aria-pressed="${lockRatio}">${IC.ratio}<span>Keep proportions</span></button></div></div>`}
   if(one){
     h+=`<div class="sec"><h3>Align to canvas</h3>`;
   } else {
@@ -1897,6 +1994,12 @@ function pGrid(){
       <div class="num" style="grid-template-columns:66px"><label style="display:flex;align-items:center;gap:4px">∠<input type="number" inputmode="decimal" data-gang="${g.id}" value="${g.axis==='a'?Math.round(g.ang*10)/10:g.axis==='v'?90:0}" aria-label="Guide angle in degrees"></label></div>
       <button class="ib" data-act="gdel" data-arg="${g.id}" aria-label="Remove guide" title="Remove guide">${IC.del}</button></div>`).join('')+`</div></div>`;
   }
+  {const M=doc.measures||[],k=mmPerPx(),u=mUnit();
+   h+=`<div class="sec"><h3>Measure</h3><div class="btns"><button class="pbtn" data-act="mtool" aria-pressed="${!!meas}">${IC.ruler}<span>${meas?'Done measuring':'Measure tool'}</span></button>
+     ${P('mshow','',doc.mshow!==false,'Show measure lines')}${P('mexp','',!!doc.mexp,'Include in export')}</div>
+     <p class="note">${k?`Scale: 100 px on the canvas ≈ ${fmtNum(100*k/MU[u])} ${u}. Tap a line’s label to change it.`:'Drag across something to measure it in px. Tap a line’s label and enter a length you know — every line then shows real sizes.'}</p>
+     ${k?`<div class="seg" role="group" aria-label="Show lengths in">${Object.keys(MU).map(x=>`<button data-act="munit" data-arg="${x}" aria-pressed="${u===x}">${x}</button>`).join('')}</div>`:''}
+     <div class="btns">${k?'<button data-act="mclear">Clear scale</button>':''}${M.length?`<button data-act="mdelall">Delete all ${M.length} line${M.length>1?'s':''}</button>`:''}</div></div>`}
   return h;
 }
 function addGuide(axis,pos){pos=Math.round(pos*10)/10;if(doc.guides.some(g=>g.axis===axis&&Math.abs(g.pos-pos)<.5))return 0;doc.guides.push({id:gid(),axis,pos});return 1}
@@ -1995,6 +2098,7 @@ $('lylist').addEventListener('change',e=>{if(e.target.id!=='lyRen')return;const 
 $('lylist').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='lyRen')e.target.blur()});
 ['pointerdown','touchstart','wheel'].forEach(t=>$('lybar').addEventListener(t,e=>e.stopPropagation(),{passive:true}));
 // ---------- top bar ----------
+$('bMeas').innerHTML=IC.ruler;$('bMeas').onclick=()=>meas?endMeasure():startMeasure();
 $('bPen').innerHTML=IC.pen;$('bPen').onclick=()=>{if(pen){pen.pts.length>=2?finishPen(false):cancelPen()}else startPen()};
 $('bMenu').innerHTML=IC.menu;$('bSnap').innerHTML=IC.magnet;$('bMulti').innerHTML=IC.multi;$('bDup').innerHTML=IC.dup;$('bDel').innerHTML=IC.del;$('bUndo').innerHTML=IC.undo;$('bRedo').innerHTML=IC.redo;
 $('bSnap').onclick=()=>{snapOn=!snapOn;toast(snapOn?'Smart snapping on':'Smart snapping off');renderCanvas();renderTop()};
@@ -2015,7 +2119,7 @@ $('bgfile').addEventListener('change',e=>{const f=e.target.files[0];e.target.val
     sel=[];styleT='bg';openTab('style');refresh();toast('Background image added');
   };
   img.onerror=()=>{URL.revokeObjectURL(url);toast('That file could not be opened as an image')};img.src=url;});
-$('epDone').onclick=()=>{if(pen)return pen.pts.length>=2?finishPen(false):cancelPen();if(sb)return sbFinish(true);if(ep&&ep.multi){ep.multi=false;renderAfterSel();return}exitEdit()};
+$('epDone').onclick=()=>{if(meas)return endMeasure();if(pen)return pen.pts.length>=2?finishPen(false):cancelPen();if(sb)return sbFinish(true);if(ep&&ep.multi){ep.multi=false;renderAfterSel();return}exitEdit()};
 {const Q={'order:fwd':IC.qup,'order:bwd':IC.qdown,'flip:h':IC.fh,'flip:v':IC.fv,'dup:':IC.dup,'rot90:':IC.rot90,'rpopen:':IC.repeat,'savesel:':IC.bookmark,'tpattach:':IC.tpath,'group:':IC.bgroup,'ungroup:':IC.bungroup,'sbstart:':IC.bbuild};
  document.querySelectorAll('#qbar [data-qa]').forEach(b=>b.innerHTML=Q[b.dataset.qa+':'+(b.dataset.arg||'')]||'');
  const setQ=()=>{$('qbar').classList.toggle('closed',!qOpen);const t=$('qtoggle');t.innerHTML=IC.wrench;t.setAttribute('aria-expanded',qOpen);t.setAttribute('aria-label',qOpen?'Hide quick tools':'Show quick tools')};
@@ -2042,7 +2146,7 @@ $('bMenu').onclick=e=>{e.stopPropagation();if(menuEl){menuEl.remove();menuEl=nul
 document.addEventListener('pointerdown',e=>{if(menuEl&&!menuEl.contains(e.target)&&e.target!==$('bMenu')){menuEl.remove();menuEl=null}});
 
 // ---------- export ----------
-function exportSVG(){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><defs><clipPath id="artclip"><rect width="${W}" height="${H}"/></clipPath></defs><rect width="${W}" height="${H}" fill="${doc.bg}"/>${bgImgSVG(true)}${doc.shapes.map(s=>shapeSVG(s,true)).join('')}</svg>`}
+function exportSVG(){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><defs><clipPath id="artclip"><rect width="${W}" height="${H}"/></clipPath></defs><rect width="${W}" height="${H}" fill="${doc.bg}"/>${bgImgSVG(true)}${doc.shapes.map(s=>shapeSVG(s,true)).join('')}${doc.mexp&&doc.mshow!==false?(doc.measures||[]).map(m=>measSVG(m,Math.max(W,H)/900,false,true)).join(''):''}</svg>`}
 function openExport(){
   const svg=exportSVG();
   const m=document.createElement('div');m.className='modal';
@@ -2085,6 +2189,8 @@ addEventListener('keydown',e=>{
     if(k==='escape'||k==='enter'){e.preventDefault();pen.pts.length>=2?finishPen(false):cancelPen();return}
     if(k==='backspace'||k==='delete'){e.preventDefault();if(pen.pts.length){pen.pts.pop();renderAfterSel()}return}
   }
+  if(meas&&(k==='escape'||k==='enter')){e.preventDefault();endMeasure();return}
+  if(k==='m'&&!mod&&!e.shiftKey&&!pen){e.preventDefault();meas?endMeasure():startMeasure();return}
   if(k==='p'&&!mod&&!pen&&!e.shiftKey){e.preventDefault();startPen();return}
   if(k==='l'&&!mod&&!e.shiftKey){e.preventDefault();setLyOpen(!lyOpen);return}
   if(k==='escape'){if(sb)return sbFinish(false);if(ep)return exitEdit();sel=[];inG=null;refresh();return}
@@ -2477,6 +2583,7 @@ setTimeout(()=>$('hint')?.remove(),7000);
 fit();refresh();showName();initLibrary();
 })();
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
 
 
 
