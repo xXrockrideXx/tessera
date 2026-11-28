@@ -82,20 +82,21 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .qbar.closed .qtoggle{background:var(--panel);color:var(--ink);border-color:var(--line)}
 @media (prefers-reduced-motion:no-preference){.qitems>*{animation:qin .18s ease-out backwards}.qitems>*:nth-last-child(2){animation-delay:.03s}.qitems>*:nth-last-child(3){animation-delay:.06s}.qitems>*:nth-last-child(4){animation-delay:.09s}.qitems>*:nth-last-child(5){animation-delay:.12s}.qitems>*:nth-last-child(6){animation-delay:.15s}}
 @keyframes qin{from{opacity:0;transform:translateY(10px) scale(.85)}}
-.lybar{position:absolute;left:max(12px,env(safe-area-inset-left,0px));top:12px;z-index:4;display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-height:calc(100% - 64px);max-width:calc(100% - 90px);pointer-events:none}
-.lytoggle{pointer-events:auto;display:flex;align-items:center;gap:8px;height:48px;padding:0 16px 0 4px;border-radius:24px;background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:0 3px 10px rgba(10,20,30,.13);transition:transform .12s;max-width:100%}
+.lybar{--lyw:212px;position:absolute;left:max(12px,env(safe-area-inset-left,0px));top:12px;z-index:4;display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-height:calc(100% - 64px);max-width:calc(100% - 90px);pointer-events:none}
+.lytoggle{pointer-events:auto;display:flex;align-items:center;gap:8px;min-height:48px;padding:3px 14px 3px 4px;text-align:left;border-radius:24px;background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:0 3px 10px rgba(10,20,30,.13);transition:transform .12s;max-width:100%}
 .lytoggle:active{transform:scale(.95)}
 .lytoggle .lyic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--accent);flex:0 0 auto}
 .lytoggle .lyic svg{width:22px;height:22px}
 .lybar:not(.closed) .lytoggle .lyic{background:var(--ink);color:var(--panel)}
-.lytoggle .lyname{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
-.lylist{pointer-events:auto;display:grid;grid-template-columns:max-content;justify-items:stretch;align-content:start;gap:5px;overflow:auto;scrollbar-width:none;padding:4px;margin:-4px}
+.lytoggle .lyname{font-size:14px;font-weight:600;max-width:calc(var(--lyw) - 66px);line-height:1.15;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.lylist{pointer-events:auto;display:grid;grid-template-columns:var(--lyw,212px);justify-items:stretch;align-content:start;gap:5px;overflow:auto;scrollbar-width:none;padding:4px;margin:-4px}
 .lylist::-webkit-scrollbar{display:none}
 .lybar.closed .lylist{display:none}
-.lyrow{display:flex;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:0 3px 10px rgba(10,20,30,.13);height:40px;padding:0 2px;flex:0 0 auto}
+.lyrow{display:flex;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:0 3px 10px rgba(10,20,30,.13);min-height:40px;padding:2px;flex:0 0 auto}
 .lyrow.act{border-color:var(--accent);background:var(--accent-soft)}
-.lyrow .lpick{flex:1;min-width:0;max-width:46vw;text-align:left;padding:0 6px 0 12px;height:36px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:none;border:0;color:var(--ink);font-family:inherit}
-.lyrow .lpick small{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-left:6px}
+.lyrow .lpick{flex:1;min-width:0;text-align:left;padding:2px 4px 2px 12px;min-height:36px;font-size:14px;display:flex;align-items:center;gap:5px;background:none;border:0;color:var(--ink);font-family:inherit}
+.lyrow .lpick .t{min-width:0;line-height:1.15;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.lyrow .lpick small{font-family:var(--f-mono);font-size:11px;color:var(--muted);flex:0 0 auto}
 .lyrow.act .lpick{font-weight:600}
 .lyrow.dim .lpick{opacity:.45}
 .lyrow>button:not(.lpick){width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--accent);background:none;border:0;flex:0 0 auto}
@@ -502,7 +503,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='28';
+const APP_VERSION='29';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -763,13 +764,17 @@ function renderLyMenu(){
   const L=doc.layers,ai=L.findIndex(l=>l.id===doc.aly),al=L[ai]||L[0];
   bar.classList.toggle('closed',!lyOpen);$('lyToggle').setAttribute('aria-expanded',lyOpen);
   $('lyActName').textContent=al?al.name:'Layers';
-  if(!lyOpen){$('lylist').innerHTML='';return}
+  if(!lyOpen){$('lylist').innerHTML='';fitLyText([$('lyActName')]);return}
   const q=selShapes(),cnt=id=>doc.shapes.filter(s=>s.ly===id).length;
   let h=`<div class="lyrow tools"><button data-la="lyadd" title="New layer" aria-label="New layer">${IC.plus}</button><button data-la="lyord" data-arg="up" title="Move active layer up" aria-label="Move active layer up" ${ai<L.length-1?'':'disabled'}>${IC.lyup}</button><button data-la="lyord" data-arg="down" title="Move active layer down" aria-label="Move active layer down" ${ai>0?'':'disabled'}>${IC.lydown}</button><button data-la="lyopen" title="More layer options" aria-label="More layer options">${IC.more}</button></div>`;
   [...L].reverse().forEach(l=>{const on=l.id===doc.aly,mv=q.length&&q.some(s=>s.ly!==l.id);
-    h+=`<div class="lyrow ${on?'act':''} ${l.hidden?'dim':''}"><button class="lpick" data-la="lyset" data-arg="${l.id}" aria-pressed="${on}">${esc(l.name)}<small>${cnt(l.id)}</small></button>${mv?`<button data-la="lymove" data-arg="${l.id}" title="Move selection to ${esc(l.name)}" aria-label="Move selection to ${esc(l.name)}">${IC.movehere}</button>`:''}<button data-la="lylock" data-arg="${l.id}" aria-pressed="${!!l.locked}" title="${l.locked?'Unlock':'Lock'} ${esc(l.name)}" aria-label="${l.locked?'Unlock':'Lock'} ${esc(l.name)}">${l.locked?IC.lock:IC.unlock}</button><button data-la="lyvis" data-arg="${l.id}" title="${l.hidden?'Show':'Hide'} ${esc(l.name)}" aria-label="${l.hidden?'Show':'Hide'} ${esc(l.name)}">${l.hidden?IC.eyeoff:IC.eye}</button></div>`});
+    h+=`<div class="lyrow ${on?'act':''} ${l.hidden?'dim':''}"><button class="lpick" data-la="lyset" data-arg="${l.id}" aria-pressed="${on}"><span class="t">${esc(l.name)}</span><small>${cnt(l.id)}</small></button>${mv?`<button data-la="lymove" data-arg="${l.id}" title="Move selection to ${esc(l.name)}" aria-label="Move selection to ${esc(l.name)}">${IC.movehere}</button>`:''}<button data-la="lylock" data-arg="${l.id}" aria-pressed="${!!l.locked}" title="${l.locked?'Unlock':'Lock'} ${esc(l.name)}" aria-label="${l.locked?'Unlock':'Lock'} ${esc(l.name)}">${l.locked?IC.lock:IC.unlock}</button><button data-la="lyvis" data-arg="${l.id}" title="${l.hidden?'Show':'Hide'} ${esc(l.name)}" aria-label="${l.hidden?'Show':'Hide'} ${esc(l.name)}">${l.hidden?IC.eyeoff:IC.eye}</button></div>`});
   $('lylist').innerHTML=h;
+  fitLyText([$('lyActName'),...$('lylist').querySelectorAll('.lpick .t')]);
 }
+function fitLyText(els){els.forEach(el=>{if(!el)return;el.style.fontSize='';el.style.whiteSpace='nowrap';
+  let f=14;while(f>11&&el.scrollWidth>el.clientWidth+1){f-=.5;el.style.fontSize=f+'px'}
+  el.style.whiteSpace=''})}
 function setLyOpen(v){lyOpen=v;try{localStorage.setItem('tessera.lyOpen',v?'1':'0')}catch(e){}renderLyMenu()}
 function renderTop(){renderLyMenu();
   $('bPen').setAttribute('aria-pressed',!!pen);
@@ -2303,6 +2308,7 @@ setTimeout(()=>$('hint')?.remove(),7000);
 fit();refresh();showName();initLibrary();
 })();
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
 
 
 
