@@ -113,6 +113,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .lymore button.danger{color:var(--danger)}.lymore button.sub{color:var(--muted);font-size:13px}
 @media (prefers-reduced-motion:no-preference){.lylist>*{animation:lyin .16s ease-out backwards}}
 @keyframes lyin{from{opacity:0;transform:translateY(-8px) scale(.94)}}
+.npad{position:absolute;right:calc(max(12px,env(safe-area-inset-right,0px)) + 60px);bottom:12px;z-index:4;display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:40px 40px;gap:4px}
+.npad>button{border-radius:12px;display:grid;place-items:center;background:var(--panel);color:var(--accent);border:1px solid var(--line);box-shadow:0 3px 10px rgba(10,20,30,.13);touch-action:none;-webkit-user-select:none;user-select:none}
+.npad>button:active{transform:scale(.9);background:var(--accent-soft)}
+.npad>button svg{width:20px;height:20px}
+.npad [data-nd="u"]{grid-column:2;grid-row:1}.npad [data-nd="l"]{grid-column:1;grid-row:2}.npad [data-nd="d"]{grid-column:2;grid-row:2}.npad [data-nd="r"]{grid-column:3;grid-row:2}
+.npad .nmode{grid-column:1;grid-row:1;width:34px;height:34px;align-self:center;justify-self:center;border-radius:50%;color:var(--muted)}
+.npad .nmode svg{width:17px;height:17px}.npad .nmode[aria-pressed="true"]{color:var(--accent);background:var(--accent-soft);border-color:var(--accent)}
+.npad .ninfo{grid-column:3;grid-row:1;align-self:end;justify-self:center;font-family:var(--f-mono);font-size:10px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:2px 6px;margin-bottom:4px;white-space:nowrap}
 .hint{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:52px;font-size:12px;color:var(--muted);max-width:60%}
 .artshadow{filter:drop-shadow(0 2px 10px rgba(20,30,40,.14))}
 
@@ -339,6 +347,14 @@ select.tin{padding:8px 10px}
       <button class="lytoggle" id="lyToggle" aria-expanded="false" aria-controls="lylist" title="Layers (L)"><span class="lyic"></span><span class="lyname" id="lyActName">Layer 1</span></button>
       <div class="lylist" id="lylist" role="group" aria-label="Layers"></div>
     </div>
+    <div class="npad" id="npad" hidden role="group" aria-label="Nudge">
+      <button class="nmode" id="nMode" aria-label="Snap" title="Snapping on: arrows jump to the next snap point. Tap to switch to 1 px steps."></button>
+      <button data-nd="u" aria-label="Nudge up"></button>
+      <span id="nInfo" class="ninfo"></span>
+      <button data-nd="l" aria-label="Nudge left"></button>
+      <button data-nd="d" aria-label="Nudge down"></button>
+      <button data-nd="r" aria-label="Nudge right"></button>
+    </div>
     <div class="qbar" id="qbar" hidden>
       <div class="qitems" id="qitems">
         <div class="qpair"><button data-qa="order" data-arg="fwd" title="Bring forward" aria-label="Bring forward"></button><button data-qa="order" data-arg="bwd" title="Send backward" aria-label="Send backward"></button></div>
@@ -464,6 +480,7 @@ const IC={
  repeat:I('<circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="4.5" r="2.2"/><circle cx="18.5" cy="8.3" r="2.2"/><circle cx="18.5" cy="15.7" r="2.2"/><circle cx="12" cy="19.5" r="2.2"/><circle cx="5.5" cy="15.7" r="2.2"/><circle cx="5.5" cy="8.3" r="2.2"/>'),
  bookmark:I('<path d="M7 3h10a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z"/><path d="M12 7v6M9 10h6"/>'),
  gang:I('<path d="M4 20 20 6" /><path d="M4 20h16" stroke-opacity=".5"/><path d="M11 20a7 7 0 0 0-1.6-4.4" />'),
+ nu:I('<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>'),nd:I('<path d="M12 5v14"/><path d="m6 13 6 6 6-6"/>'),nl:I('<path d="M19 12H5"/><path d="m11 6-6 6 6 6"/>'),nr:I('<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>'),
  ruler:I('<path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l1.5 1.5M13 7l2 2"/>'),
  pen:I('<path d="M12 3 7 13l5 8 5-8z"/><circle cx="12" cy="13" r="1.6"/><path d="M12 3v8.4"/>'),
  tpath:I('<path d="M3 18C6 9 18 9 21 18" stroke-dasharray="2.5 2.5"/><path d="M7 12.5 9 8m-1.6 1.4h3M12 7v4.6m-1.4-4.6h2.8M15.5 8.6l1.6 4"/>'),
@@ -537,7 +554,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='35';
+const APP_VERSION='36';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -817,7 +834,7 @@ function fitLyText(els){els.forEach(el=>{if(!el)return;el.style.fontSize='';el.s
   let f=14;while(f>11&&el.scrollWidth>el.clientWidth+1){f-=.5;el.style.fontSize=f+'px'}
   el.style.whiteSpace=''})}
 function setLyOpen(v){lyOpen=v;try{localStorage.setItem('tessera.lyOpen',v?'1':'0')}catch(e){}renderLyMenu()}
-function renderTop(){renderLyMenu();
+function renderTop(){renderLyMenu();renderNpad();
   $('bPen').setAttribute('aria-pressed',!!pen);$('bMeas').setAttribute('aria-pressed',!!meas);
   $('bUndo').disabled=sb?!sb.hist.length:!undo.length;$('bRedo').disabled=!!sb||!redo.length;
   $('bDup').disabled=!sel.length||!!sb;$('bDel').disabled=(!sel.length&&!mSel)||!!sb;
@@ -991,7 +1008,7 @@ cv.addEventListener('pointerdown',e=>{
     drag={mode:'marq',a:P,keep:[...sel]};marq={a:P,b:P};renderAfterSel();
   }
 });
-function renderAfterSel(){followSel();renderCanvas();renderPanel();renderTop()}
+function renderAfterSel(){followSel();renderCanvas();renderNpad();renderPanel();renderTop()}
 cv.addEventListener('pointermove',e=>{
   if(!ptrs.has(e.pointerId))return;
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -1341,6 +1358,37 @@ function measSheet(id){
   setTimeout(()=>{if(!isRef)$('mVal')?.blur()},80);
 }
 cv.addEventListener('pointermove',e=>{if(!meas||ptrs.size)return;meas.hover=mSnap(toWorld(e.clientX,e.clientY),null,false,null);renderCanvas()});
+
+// ---------- nudge pad: snap-aware steps (next snap point) or 1 px when snapping is off ----------
+function nudgeItems(){
+  if(ep&&ep.sel.length){const s=byId(ep.id);if(!s)return null;const ns=epSelNodes();if(!ns.length)return null;
+    return{pts:ns.map(({n})=>worldOf(s,n.x,n.y)),move:(dx,dy)=>{ns.forEach(({n})=>{const a=worldOf(s,n.x,n.y),u=unitOf(s,{x:a.x+dx,y:a.y+dy}),du=u.u-n.x,dv=u.v-n.y;for(const k of['x','ix','ox'])n[k]+=du;for(const k of['y','iy','oy'])n[k]+=dv});normalisePts(s,ep.cs)},ex:[]}}
+  if(mSel&&mById(mSel)){const m=mById(mSel);return{pts:[{x:m.x1,y:m.y1},{x:m.x2,y:m.y2}],move:(dx,dy)=>{m.x1+=dx;m.x2+=dx;m.y1+=dy;m.y2+=dy},ex:[]}}
+  const ss=selShapes().filter(s=>!isL(s));if(!ss.length||sb||pen)return null;const b=union(ss);
+  return{box:b,move:(dx,dy)=>ss.forEach(s=>{s.x+=dx;s.y+=dy}),ex:sel}}
+function nudgeStep(dir,fine){
+  const it=nudgeItems();if(!it)return 0;const ax=dir==='l'||dir==='r'?'x':'y',sg=dir==='r'||dir==='d'?1:-1;
+  let d=sg,hit=null;
+  if(snapOn&&!fine){
+    const E=it.box?(ax==='x'?[it.box.l,(it.box.l+it.box.r)/2,it.box.r]:[it.box.t,(it.box.t+it.box.b)/2,it.box.b]):it.pts.map(p=>p[ax]);
+    const T=snapTargets(ax,it.ex);if(it.pts&&SN.obj){const L=ax==='x'?W:H;T.push(0,L/2,L)}
+    let best=null;
+    for(const e of E){for(const t of T){const dd=t-e;if(dd*sg>.5&&(best==null||Math.abs(dd)<Math.abs(best.d)))best={d:dd,t}}
+      if(SN.grid){const gs=doc.grid.size,t=sg>0?Math.floor(e/gs+1e-6)*gs+gs:Math.ceil(e/gs-1e-6)*gs-gs,dd=t-e;if(Math.abs(dd)>.5&&(best==null||Math.abs(dd)<Math.abs(best.d)))best={d:dd,t,grid:true}}}
+    if(best){d=best.d;hit=best}else d=sg*(SN.grid?doc.grid.size:10)}
+  it.move(ax==='x'?d:0,ax==='y'?d:0);
+  guides={x:null,y:null};if(hit&&!hit.grid)guides[ax]=hit.t;
+  return Math.abs(d)}
+let nRep=null;
+function nudgeStart(dir,fine){pushUndo();const d=nudgeStep(dir,fine);nInfo(d,fine);renderCanvas();renderPanel();
+  let n=0;nRep={t:setTimeout(function go(){n++;const dd=nudgeStep(dir,fine);nInfo(dd,fine);renderCanvas();nRep.t=setTimeout(go,snapOn&&!fine?260:n>12?30:70)},380)}}
+function nudgeEnd(){if(!nRep)return;clearTimeout(nRep.t);nRep=null;setTimeout(()=>{guides={x:null,y:null};renderCanvas()},700);save();renderPanel();renderTop()}
+function nInfo(d,fine){const el=$('nInfo');if(el)el.textContent=d?`${Math.round(d*10)/10}px`:''}
+function renderNpad(){const pad=$('npad');if(!pad)return;
+  const show=qOpen&&!!nudgeItems()&&!drag;pad.hidden=!show;if(!show)return;
+  $('nMode').setAttribute('aria-pressed',snapOn);$('nMode').innerHTML=snapOn?IC.magnet:'<span style="font:600 11px var(--f-mono)">1px</span>';
+  $('nMode').title=snapOn?'Snapping on: arrows jump to the next snap point (shapes, guides, grid). Tap for 1 px steps.':'Snapping off: arrows move 1 px. Tap to snap.';
+  $('nMode').setAttribute('aria-label',snapOn?'Arrows snap — tap for 1 px steps':'Arrows move 1 px — tap to snap')}
 
 // ---------- pen: draw lines and curves ----------
 let pen=null,penPrefs={stroke:'#1b232d',sw:0};
@@ -2123,7 +2171,12 @@ $('epDone').onclick=()=>{if(meas)return endMeasure();if(pen)return pen.pts.lengt
 {const Q={'order:fwd':IC.qup,'order:bwd':IC.qdown,'flip:h':IC.fh,'flip:v':IC.fv,'dup:':IC.dup,'rot90:':IC.rot90,'rpopen:':IC.repeat,'savesel:':IC.bookmark,'tpattach:':IC.tpath,'group:':IC.bgroup,'ungroup:':IC.bungroup,'sbstart:':IC.bbuild};
  document.querySelectorAll('#qbar [data-qa]').forEach(b=>b.innerHTML=Q[b.dataset.qa+':'+(b.dataset.arg||'')]||'');
  const setQ=()=>{$('qbar').classList.toggle('closed',!qOpen);const t=$('qtoggle');t.innerHTML=IC.wrench;t.setAttribute('aria-expanded',qOpen);t.setAttribute('aria-label',qOpen?'Hide quick tools':'Show quick tools')};
- setQ();$('qtoggle').onclick=()=>{qOpen=!qOpen;try{localStorage.setItem('tessera.quick',qOpen?'1':'0')}catch(e){}setQ()};
+ setQ();$('qtoggle').onclick=()=>{qOpen=!qOpen;try{localStorage.setItem('tessera.quick',qOpen?'1':'0')}catch(e){}setQ();renderNpad()};
+ {const P=$('npad'),ic={u:IC.nu,d:IC.nd,l:IC.nl,r:IC.nr};P.querySelectorAll('[data-nd]').forEach(b=>b.innerHTML=ic[b.dataset.nd]);
+  P.addEventListener('pointerdown',e=>{const b=e.target.closest('[data-nd]');if(!b)return;e.preventDefault();e.stopPropagation();try{b.setPointerCapture(e.pointerId)}catch(_){}nudgeStart(b.dataset.nd,e.altKey)});
+  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>P.addEventListener(t,nudgeEnd));
+  P.addEventListener('contextmenu',e=>e.preventDefault());
+  $('nMode').onclick=()=>{snapOn=!snapOn;toast(snapOn?'Snapping on — arrows jump to the next snap point':'Snapping off — arrows move 1 px');refresh()};}
  $('qbar').addEventListener('click',e=>{const b=e.target.closest('[data-qa]');if(b)act(b.dataset.qa,b.dataset.arg)});}
 let menuEl=null;
 $('bMenu').onclick=e=>{e.stopPropagation();if(menuEl){menuEl.remove();menuEl=null;return}
@@ -2583,6 +2636,7 @@ setTimeout(()=>$('hint')?.remove(),7000);
 fit();refresh();showName();initLibrary();
 })();
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
 
 
 
