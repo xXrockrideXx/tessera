@@ -161,6 +161,9 @@ h3{font-family:var(--f-display);font-weight:500;font-size:12px;letter-spacing:.0
 .sw .padd svg{width:16px;height:16px}.sw .padd:disabled{opacity:.35;cursor:default}
 .mbox .tin{box-sizing:border-box;width:100%;max-width:100%}
 .mbox textarea.tin{min-height:0;height:64px}
+.palbtns{display:flex;align-items:center;gap:6px}.palbtns .ib{width:36px;height:36px}.palbtns .ib svg{width:20px;height:20px}
+.palimg{border-radius:12px;overflow:hidden;background:var(--sunk);display:grid;place-items:center;max-height:180px}.palimg img{max-width:100%;max-height:180px;display:block}
+.pchip{aspect-ratio:1;border-radius:50%;border:1px solid rgba(0,0,0,.12);display:block}
 .palhd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px}
 .palhd b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .palhd .ib{width:30px;height:30px}.palhd .ib svg{width:18px;height:18px}
@@ -334,6 +337,7 @@ select.tin{padding:8px 10px}
     <button class="zoom" id="zoom" title="Fit to screen">100%</button>
     <button class="eptag pbtn" id="epDone" hidden>Done editing points</button>
     <input type="file" id="bgfile" accept="image/*" hidden>
+    <input type="file" id="palfile" accept="image/*" hidden>
   </div>
   <div class="pwrap" id="pwrap">
     <button class="handle" id="handle" aria-label="Collapse panel" aria-expanded="true"><span class="grip"></span><span class="hlab" id="hlab">Shapes</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
@@ -511,7 +515,7 @@ const sample=()=>({bg:'#ffffff',W:1000,H:1000,shapes:[
   {id:'s2',type:'diamond',x:500,y:500,w:600,h:600,r:0,fx:1,fy:1,fill:'#ae8f6c',stroke:'none',sw:0,op:1},
 ]});
 let qOpen=true;try{qOpen=localStorage.getItem('tessera.quick')!=='0'}catch(e){}
-const APP_VERSION='31';
+const APP_VERSION='32';
 let collapsed=false;try{collapsed=localStorage.getItem('tessera.collapsed')==='1'}catch(e){}
 let doc, sel=[], undo=[], redo=[], tab='shapes', styleT='fill', snapOn=true, multi=false, lockRatio=false, lastFill='#ae8f6c', nid=1, alignTo='selection', keyId=null, gapVal=20;
 // key shape: the one others line up to / match. Defaults to the first one selected.
@@ -1636,6 +1640,7 @@ function act(name,arg){
     case'gclear':pushUndo();doc.guides=[];toast('All guides removed');break;
     case'gdel':pushUndo();doc.guides=doc.guides.filter(g=>g.id!==arg);break;
     case'palnew':newPalSheet();return;
+    case'palimg':$('palfile').click();return;
     case'palmore':palSheet(arg);return;
     case'paladd':{const pl=pals.find(x=>x.id===arg),c=hexN(styleT==='bg'?doc.bg:(selShapes()[0]?.[styleT]));if(!pl)return;if(!c)return toast('Pick a colour first');
       if(pl.cols.includes(c)){toast(`${c} is already in ${pl.name}`);return}pl.cols.push(c);storePals();renderPanel();toast(`Added ${c} to ${pl.name}`);return}
@@ -1714,7 +1719,7 @@ function pStyle(){
   const used=[...new Set(doc.shapes.flatMap(s=>[s.fill,s.stroke]).filter(c=>c&&c!=='none'&&!PALETTE.includes(c.toLowerCase())))].slice(0,12);
   if(used.length)h+=`<div class="sec"><h3>In this design</h3><div class="sw">${used.map(c=>`<button style="background:${c}" data-col="${c}" aria-pressed="${cur===c}" title="${c}" aria-label="${c}"></button>`).join('')}</div></div>`;
   {const ok=cur!=='none'&&hexN(cur);
-   h+=`<div class="sec"><div class="lyhead"><h3>My palettes</h3><button class="pbtn" data-act="palnew">${IC.plus}<span>New palette</span></button></div>`;
+   h+=`<div class="sec"><div class="lyhead"><h3>My palettes</h3><span class="palbtns"><button class="ib" data-act="palimg" title="Palette from an image" aria-label="Make a palette from an image">${IC.img}</button><button class="pbtn" data-act="palnew">${IC.plus}<span>New palette</span></button></span></div>`;
    if(!pals.length)h+=`<p class="note">Make palettes of your own colours to reuse across designs. You can paste hex codes or grab the colours already in this design.</p>`;
    pals.forEach(pl=>{h+=`<div class="palhd"><b>${esc(pl.name)}</b><button class="ib" data-act="palmore" data-arg="${pl.id}" aria-label="Edit ${esc(pl.name)}" title="Edit palette">${IC.more}</button></div>
      <div class="sw">${palSwatches(pl.cols,'data-col',(cur||'').toLowerCase())}<button class="padd" data-act="paladd" data-arg="${pl.id}" title="${ok?'Add '+hexN(cur)+' to '+esc(pl.name):'Pick a colour first'}" aria-label="Add current colour to ${esc(pl.name)}" ${ok?'':'disabled'}>${IC.plus}</button></div>`});
@@ -2085,15 +2090,55 @@ const hexN=c=>{c=String(c||'').trim().toLowerCase();if(/^#?[0-9a-f]{3}$/.test(c)
 const hexesIn=t=>[...new Set((String(t).match(/#?\b[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g)||[]).map(hexN).filter(Boolean))];
 const designCols=()=>[...new Set(doc.shapes.flatMap(s=>[s.fill,s.stroke]).map(hexN).filter(Boolean))];
 function palSwatches(cols,attr,cur){return cols.map(c=>`<button style="background:${c}" ${attr}="${c}" aria-pressed="${cur===c}" title="${c}" aria-label="${c}"></button>`).join('')}
+// ---- palette from an image: k-means on a small copy of the picture ----
+function imgPixels(img){const m=120,f=Math.min(1,m/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height));
+  const w=Math.max(1,Math.round((img.naturalWidth||img.width)*f)),h=Math.max(1,Math.round((img.naturalHeight||img.height)*f));
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data,px=[];for(let i=0;i<d.length;i+=4)if(d[i+3]>=128)px.push([d[i],d[i+1],d[i+2]]);return px}
+function kColours(px,k){
+  if(!px.length)return[];const D=(a,b)=>(a[0]-b[0])**2*.3+(a[1]-b[1])**2*.59+(a[2]-b[2])**2*.11;
+  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  const C=[px[Math.floor(rnd()*px.length)].slice()];
+  while(C.length<k){const ds=px.map(p=>Math.min(...C.map(c=>D(p,c))));const tot=ds.reduce((a,b)=>a+b,0);if(!tot)break;let r=rnd()*tot,i=0;while(r>ds[i]){r-=ds[i];i++}C.push(px[Math.min(i,px.length-1)].slice())}
+  let n=[];for(let it=0;it<12;it++){const S=C.map(()=>[0,0,0]);n=C.map(()=>0);
+    for(const p of px){let bi=0,bd=1e18;for(let j=0;j<C.length;j++){const dd=D(p,C[j]);if(dd<bd){bd=dd;bi=j}}S[bi][0]+=p[0];S[bi][1]+=p[1];S[bi][2]+=p[2];n[bi]++}
+    C.forEach((c,j)=>{if(n[j]){c[0]=S[j][0]/n[j];c[1]=S[j][1]/n[j];c[2]=S[j][2]/n[j]}})}
+  const hx=c=>'#'+c.map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
+  // drop near-duplicates, then order dark to light
+  const out=[];C.map((c,j)=>({c,n:n[j]})).filter(o=>o.n>0).sort((a,b)=>b.n-a.n).forEach(o=>{if(!out.some(q=>D(q.c,o.c)<180))out.push(o)});
+  const L=c=>.2126*c[0]+.7152*c[1]+.0722*c[2];return out.sort((a,b)=>L(a.c)-L(b.c)).map(o=>hx(o.c))}
+function palFromImage(src,label){
+  const img=new Image();img.onload=()=>{let px;try{px=imgPixels(img)}catch(e){return toast('Couldn’t read the colours in that image')}
+    if(!px.length)return toast('That image has no visible colours');let k=6;
+    const show=()=>{const cols=kColours(px,k);
+      sheet(`<h2>Palette from image</h2><div class="palimg"><img src="${src}" alt="Chosen image"></div>
+        <div class="sw" style="margin:12px 0">${cols.map(c=>`<span class="pchip" style="background:${c}" title="${c}"></span>`).join('')}</div>
+        <p class="note" style="margin:0 0 6px">${cols.join(' ')}</p>
+        <div class="seg" role="group" aria-label="Number of colours">${[3,4,5,6,8,10].map(v=>`<button data-s="k" data-v="${v}" aria-pressed="${k===v}">${v}</button>`).join('')}</div>
+        <label class="note" for="pName">Name</label><input class="tin" id="pName" value="${esc(label||'From image')}" autocomplete="off" maxlength="40">
+        <div class="btns"><button class="pbtn" data-s="make">Create palette</button><button data-s="other">Choose another image</button><button data-s="x">Cancel</button></div>`,
+      async(a,v)=>{
+        if(a==='x')return closeSheet();
+        if(a==='other'){closeSheet();return $('palfile').click()}
+        if(a==='k'){const nm=$('pName').value;k=+v;show();$('pName').value=nm;return}
+        if(a==='make'){const name=$('pName').value.trim()||'From image';pals.push({id:'p'+Date.now().toString(36),name,cols});await storePals();closeSheet();if(tab!=='style')openTab('style');renderPanel();toast(`${name} made with ${cols.length} colours`)}
+      });setTimeout(()=>$('pName')?.blur(),80)};
+    show()};
+  img.onerror=()=>toast('That file couldn’t be opened as an image');img.src=src}
+$('palfile').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  const r=new FileReader();r.onload=()=>palFromImage(r.result,(f.name||'').replace(/\.[^.]+$/,'').slice(0,40)||'From image');r.readAsDataURL(f)});
 function newPalSheet(){
   const dc=designCols();
   sheet(`<h2>New palette</h2>
     <label class="note" for="pName">Name</label><input class="tin" id="pName" value="Palette ${pals.length+1}" autocomplete="off" maxlength="40">
     <label class="note" for="pHex">Colours (optional) — paste hex codes, e.g. #264653, #2a9d8f, e9c46a</label><textarea class="tin" id="pHex" rows="2" style="resize:vertical;font-family:var(--f-mono);font-size:13px" placeholder="#264653 #2a9d8f #e9c46a"></textarea>
     <div class="btns"><button class="pbtn" data-s="make">Create palette</button>${dc.length?`<button data-s="design">Use this design’s ${dc.length} colour${dc.length>1?'s':''}</button>`:''}<button data-s="x">Cancel</button></div>
+    <div class="list"><button data-s="img">${IC.img}From a photo or image</button>${doc.bgImg&&bgData[doc.bgImg.id]?`<button data-s="bgimg">${IC.img}From this design’s background image</button>`:''}</div>
     ${PAL_SEED.some(x=>!pals.some(y=>y.id===x.id))?`<div class="list"><button data-s="seed">${IC.plus}Bring back the starter palettes</button></div>`:''}`,
   async a=>{
     if(a==='x')return closeSheet();
+    if(a==='img'){closeSheet();return $('palfile').click()}
+    if(a==='bgimg'){closeSheet();return palFromImage(bgData[doc.bgImg.id],'Background colours')}
     if(a==='seed'){const add=PAL_SEED.filter(x=>!pals.some(y=>y.id===x.id)).map(x=>({...x,cols:[...x.cols]}));pals.push(...add);await storePals();closeSheet();renderPanel();toast(`Added ${add.length} starter palette${add.length>1?'s':''}`);return}
     const name=$('pName').value.trim()||`Palette ${pals.length+1}`;
     const cols=a==='design'?designCols():hexesIn($('pHex').value);
@@ -2380,6 +2425,7 @@ setTimeout(()=>$('hint')?.remove(),7000);
 fit();refresh();showName();initLibrary();
 })();
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
 
 
 
